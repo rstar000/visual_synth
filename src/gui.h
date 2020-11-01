@@ -1,9 +1,11 @@
 #pragma once
 
+#include <memory>
+#include <stdio.h>
+
 #include "imgui.h"
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_opengl3.h"
-#include <stdio.h>
 #include <SDL2/SDL.h>
 #include <GL/glew.h>            // Initialize with glewInit()
 
@@ -17,8 +19,8 @@ class Gui {
   // Blocks calling thread
   void Spin();
 
-  const KeyboardState& GetKeyboardState() {
-    return kb_state_;
+  std::shared_ptr<const KeyboardState> GetKeyboardState() {
+    return key_state_;
   }
 
  private:
@@ -26,5 +28,5 @@ class Gui {
 
   SDL_Window* window_;
   SDL_GLContext gl_context_;
-  KeyboardState kb_state_;
+  std::shared_ptr<KeyboardState> key_state_;
 };

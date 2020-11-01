@@ -1,6 +1,8 @@
 #include "util.h"
 #include "output.h"
 
+// TODO: lots of refactoring here.
+
 PulseAudioOutputHandler::PulseAudioOutputHandler(
     const std::shared_ptr<SampleBuffer>& buffer) {
 

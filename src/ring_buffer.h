@@ -5,17 +5,26 @@
 #include <memory>
 #include <atomic>
 
+#include "util.h"
+
+
+// Implementation of a nonblocking ring buffer.
+// It uses strong memory order assumption, so probably
+// only works correctly on X86 CPU.
 template <typename T>
 class RingBuffer {
  public:
   explicit RingBuffer(std::size_t size)
-    : size_(size), data_(size) {
+      : size_(size), data_(size) {
     read_position_.store(0);
     write_position_.store(0);
   }
 
-  // N must be <= size
+  // Write N bytes from current position. 
+  // N must be <= size.
+  // src must contain atleast N elements.
   void Write(const std::vector<T>& src, std::size_t n) {
+    ASSERT(n <= size_);
     auto head = write_position_.load();
     auto position = head % size_;
 
@@ -30,7 +39,7 @@ class RingBuffer {
     write_position_.store(head + n);
   }
 
-  // Assume already resized to atleast N.
+  // Read N elements into dst. Assume dst already resized to atleast N.
   void Read(std::vector<T>& dst, std::size_t n) {
     auto head = read_position_.load();
     auto position = head % size_;
@@ -46,20 +55,26 @@ class RingBuffer {
     read_position_.store(head + n);
   }
 
+  // This many element can be read when the function is called.
+  // If you read more, result could be undefined.
   std::size_t ReadyToRead() const {
     return write_position_.load() - read_position_.load();
   }
 
+  // This much data can be written when the function is called.
+  // If you write more, you may run into conflict with the reader.
   std::size_t ReadyToWrite() const {
     std::size_t delta = write_position_.load() - read_position_.load();
     assert(delta <= size_);
     return size_ - delta;
   }
 
+  // Size of the buffer. It can't be changed.
   std::size_t Size() const {
     return size_;
   }
 
+  // Current write head position. It always increases when new data is written.
   std::size_t Position() const {
     return write_position_.load();
   }
@@ -67,7 +82,6 @@ class RingBuffer {
  private:
   const std::size_t size_;
   std::vector<T> data_;
-
   std::atomic<std::size_t> read_position_;
   std::atomic<std::size_t> write_position_;
 };

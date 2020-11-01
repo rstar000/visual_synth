@@ -9,24 +9,24 @@
 const float kFrequencyMultiplier = std::pow(2.0f, 1.0f / 12.0f);
 const float kA440 = 440.0f;
 
-float NoteFrequency(int octave, int half_steps) {
+inline float ComputeFrequency(int octave, int half_steps) {
   float octave_base = kA440 * std::pow(2.0f, octave);
   return octave_base * (std::pow(kFrequencyMultiplier, half_steps));
 }
 
 struct Note {
-  Note(int octave, int half_steps)
+  Note(int octave = 0, int half_steps = 0)
     : octave(octave)
     , half_steps(half_steps)
-    , frequency(NoteFrequency(octave, half_steps)) {
+    , frequency(ComputeFrequency(octave, half_steps)) {
   }
-  const int octave;
-  const int half_steps;
-  const float frequency;
+  int octave;
+  int half_steps;
+  float frequency;
 };
 
 struct Octave {
-  Octave(int idx) {
+  Octave(int idx = 0) {
     std::vector<std::string> names = {
       "C", "Db", "D", "Eb", "E", "F",
       "Gb", "G", "Ab", "A", "Bb", "B"};

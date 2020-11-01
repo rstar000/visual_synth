@@ -4,17 +4,26 @@
 
 class Oscillator {
  public:
-  Oscillator() = default;
+  Oscillator(float f, float a) : freq_(f), amp_(a) {}
+
+  void SetFreq(float f) {
+    freq_ = f;
+  }
+
+  void SetAmp(float a) {
+    amp_ = a;
+  }
 
   virtual float Value(float time) = 0;
+  float freq_;
+  float amp_;
 };
 
 class Sine : public Oscillator {
  public:
   Sine(float frequency, float phase, float amplitude)
-    : freq_(frequency)
-    , phase_(phase)
-    , amp_(amplitude) {
+    : Oscillator(frequency, amplitude)
+    , phase_(phase) {
   }
 
   float Value(float time) {
@@ -22,25 +31,21 @@ class Sine : public Oscillator {
   }
 
  private:
-  float freq_;
   float phase_;
-  float amp_;
 };
 
 class Square : public Oscillator {
  public:
   Square(float frequency, float amplitude, float duty_cycle)
-    : freq_(frequency)
-    , amp_(amplitude)
-    , ds_(duty_cycle) {
+    : Oscillator(frequency, amplitude)
+    , dc_(duty_cycle) {
   }
 
   float Value(float time) {
-    return amp_ * (sin(time * 2.0 * M_PI * freq_) > 0 ? 1.0 : -1.0);
+    float t = std::fmod(time,  1.0f / freq_) * freq_;
+    return amp_ * (t > dc_ ? 1.0f : -1.0f);
   }
 
  private:
-  float freq_;
-  float amp_;
-  float ds_;
+  float dc_;
 };

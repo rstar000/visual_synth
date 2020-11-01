@@ -10,11 +10,12 @@
 #include <pulse/pulseaudio.h>
 #include "ring_buffer.h"
 
+// Audio constants are all hardcoded here for now.
 const int kSampleRate = 44100;
 const pa_sample_format kSampleFormat = PA_SAMPLE_S16LE;
 const int kNumChannels = 2;
 
-using SampleType = std::int16_t;
+using SampleType = std::int16_t;  // 16 bit.
 using SampleBuffer = RingBuffer<SampleType>;
 
 void context_state_cb(
@@ -23,6 +24,9 @@ void stream_state_cb(
     pa_stream *stream, void *mainloop);
 void stream_success_cb(
     pa_stream *stream, int success, void *userdata);
+
+
+// All "magic" happens here. Userdata is a pointer to ringbuffer.
 void stream_write_cb(
     pa_stream *stream, std::size_t requested_bytes, void *userdata);
 

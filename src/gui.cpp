@@ -1,6 +1,7 @@
 #include "gui.h"
 
-Gui::Gui() {
+Gui::Gui() :
+    key_state_(std::make_shared<KeyboardState>()) {
   InitWindow();
 }
 
@@ -80,7 +81,7 @@ void Gui::Spin() {
                 done = true;
 
             if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) {
-              kb_state_.ProcessEvent(event);
+              key_state_->ProcessEvent(event);
             }
         }
 
