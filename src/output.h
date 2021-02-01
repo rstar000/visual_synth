@@ -9,8 +9,10 @@
 #include <vector>
 
 #include <pulse/pulseaudio.h>
+
 #include "ring_buffer.h"
 #include "node.h"
+#include "node_graph.h"
 
 // Audio constants are all hardcoded here for now.
 const int kSampleRate = 44100;
@@ -91,20 +93,4 @@ class SampleWriter {
   std::shared_ptr<SampleBuffer> buffer_;
   std::vector<SampleType> samples_;
   size_t sample_idx_ = 0;
-};
-
-class OutputNode : public Node {
- public:
-  OutputNode(std::shared_ptr<SampleWriter> writer) 
-      : writer_(writer) {
-    auto signal = std::make_shared<Input>("signal", Dt::kFloat, this, 0.0f);
-    inputs = {signal};
-  }
- protected:
-  void Process(float time) override {
-    float signal = inputs[0]->GetValue<float>();
-    writer_->Write(signal);
-  }
-  
-  std::shared_ptr<SampleWriter> writer_;
 };

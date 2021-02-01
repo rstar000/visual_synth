@@ -61,8 +61,16 @@ class AudioThread {
       }
 
       tracker_->Update(writer_->GetTimestamp());
+
       for (size_t i = 0; i < ready_to_write; ++i) {
-        graph_->Run(writer_->GetTimestamp());  // Write samples to intermediate
+        float timestamp = writer_->GetTimestamp();
+        float signal = 0.0f;
+        for (size_t channel_idx = 0; channel_idx < tracker_->NumChannels(); ++channel_idx) {
+          tracker_->SetActiveChannel(channel_idx);
+          signal += graph_->Run(timestamp);  
+        }
+        
+        writer_->Write(signal);
       }
       
       writer_->Flush();

@@ -96,7 +96,7 @@ class KeyboardTracker : public Tracker {
         auto& channel = channels_[*found];
         channel.note = oct_.Get(key);
         channel.begin = time;
-        channel.velocity = 1.0f;
+        channel.velocity = 0.3f;
         key_to_channel_[key] = *found;
       } else if (active_channel != -1 && !is_pressed) {
         auto& channel = channels_[active_channel];

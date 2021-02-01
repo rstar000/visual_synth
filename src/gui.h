@@ -52,7 +52,4 @@ class Gui {
   bool show_demo_window = true;
   bool show_another_window = false;
   ImVec4 clear_color;
-  ImVector<LinkInfo>   g_Links;                // List of live links. It is dynamic unless you want to create read-only view over nodes.
-  int                  g_NextLinkId = 100;     // Counter to help generate link ids. In real application this will probably based on pointer to user data structure.
-
 };

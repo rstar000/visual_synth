@@ -10,6 +10,7 @@ set(SOURCES
     "src/output.cpp"
     "src/gui.cpp"
     "src/bridge.cpp"
+    "src/node_graph.cpp"
     external/imgui/imgui.cpp
     external/imgui/imgui_draw.cpp
     external/imgui/imgui_widgets.cpp

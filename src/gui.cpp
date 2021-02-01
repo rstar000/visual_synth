@@ -142,24 +142,20 @@ void Gui::DrawFrame() {
     ed::SetCurrentEditor(g_Context);
 
     // Start interaction with editor.
-    ed::Begin("My Editor", ImVec2(0.0, 0.0f));
-
-    int uniqueId = 1;
+    ed::Begin("My Editor", ImVec2(1000.0f, 1000.0f));
 
     //
     // 1) Commit known data to editor
     //
-
-    // Submit Node A
-    ed::NodeId nodeA_Id = uniqueId++;
-    ed::PinId  nodeA_InputPinId = uniqueId++;
-    ed::PinId  nodeA_OutputPinId = uniqueId++;
-
-    if (g_FirstFrame)
-        ed::SetNodePosition(nodeA_Id, ImVec2(10, 10));
     
-    for (auto& [node_id, pins] : bridge_->node_id_to_pins) {
-      NodePtr node = bridge_->node_id_to_ptr[node_id];
+    int num_traversed = 0;
+    for (auto& [node_id, attrs] : bridge_->node_attrs) {
+      ++num_traversed;
+      NodePtr node = attrs.ptr;
+      if (!attrs.position) {
+        attrs.position = Position{100 * num_traversed, 0};
+        ed::SetNodePosition(node_id, ImVec2(attrs.position->x, attrs.position->y));
+      }
       ed::NodeId g_node_id = node_id;
       ed::BeginNode(g_node_id);
           std::stringstream ss;
@@ -167,8 +163,8 @@ void Gui::DrawFrame() {
           std::string node_name = ss.str();
           ImGui::Text(node_name.c_str());
           ImGuiEx_BeginColumn();
-            for (auto pin_id : pins.input_ids) {
-              int input_idx = pins.input_pin_to_input_idx[pin_id];
+            for (auto pin_id : attrs.pins.input_ids) {
+              int input_idx = attrs.pins.input_pin_to_input_idx[pin_id];
               auto input = node->GetInputByIndex(input_idx);
 
               ed::PinId g_pin_id = pin_id;
@@ -177,8 +173,8 @@ void Gui::DrawFrame() {
               ed::EndPin();
             }
           ImGuiEx_NextColumn();
-            for (auto pin_id : pins.output_ids) {
-              int output_idx = pins.output_pin_to_output_idx[pin_id];
+            for (auto pin_id : attrs.pins.output_ids) {
+              int output_idx = attrs.pins.output_pin_to_output_idx[pin_id];
               auto output = node->GetOutputByIndex(output_idx);
 
               ed::PinId g_pin_id = pin_id;
@@ -188,21 +184,17 @@ void Gui::DrawFrame() {
             }
           ImGuiEx_EndColumn();
       ed::EndNode();
-
     }
 
-    // if (g_FirstFrame)
-    //     ed::SetNodePosition(nodeB_Id, ImVec2(210, 60));
-
-
     // Submit Links
-    // for (auto& linkInfo : g_Links)
-    //     ed::Link(linkInfo.Id, linkInfo.InputId, linkInfo.OutputId);
+    for (auto& [link_id, pins] : bridge_->link_id_to_pins) {
+      ed::Link(link_id, pins.first, pins.second);
+    }
 
     //
     // 2) Handle interactions
     //
-
+  
     // Handle creation action, returns true if editor want to create new object (node or link)
     if (ed::BeginCreate())
     {
@@ -227,10 +219,9 @@ void Gui::DrawFrame() {
                 if (ed::AcceptNewItem())
                 {
                     // Since we accepted new link, lets add one to our list of links.
-                    g_Links.push_back({ ed::LinkId(g_NextLinkId++), inputPinId, outputPinId });
-
+                    int link_id = bridge_->AddLink(int(inputPinId.Get()), int(outputPinId.Get()));
                     // Draw new link.
-                    ed::Link(g_Links.back().Id, g_Links.back().InputId, g_Links.back().OutputId);
+                    ed::Link(link_id, inputPinId, outputPinId);
                 }
 
                 // You may choose to reject connection between these nodes
@@ -240,8 +231,9 @@ void Gui::DrawFrame() {
         }
     }
     ed::EndCreate(); // Wraps up object creation action handling.
+  
 
-
+    /*
     // Handle deletion action
     if (ed::BeginDelete())
     {
@@ -268,6 +260,7 @@ void Gui::DrawFrame() {
         }
     }
     ed::EndDelete(); // Wrap up deletion action
+    */
 
 
 

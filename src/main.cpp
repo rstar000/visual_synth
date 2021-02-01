@@ -46,35 +46,11 @@ class Pipeline {
   Square osc_;
 };
 
-// Mixes multiple channels in to one output
-class Synthesizer {
- public:
-  Synthesizer(std::shared_ptr<const Tracker> tracker)
-    : tracker_(tracker) {
-    for (size_t i = 0; i < tracker_->GetNumChannels(); ++i) {
-      pipelines_.emplace_back(tracker_, i);
-    }
-  }
-
-  float Value(float time) {
-    float total = 0.0;
-    for (size_t i = 0; i < tracker_->GetNumChannels(); ++i) {
-      total += pipelines_[i].Value(time);
-    }
-
-    return total;
-  }
-
- private:
-  std::shared_ptr<const Tracker> tracker_;
-  std::vector<Pipeline> pipelines_;
-};
-
 int main() {
   auto bridge = std::make_shared<Bridge>();
   Gui gui(bridge);
   auto key_state = gui.GetKeyboardState();
-  const size_t latency = 2;  // 1 ms
+  const size_t latency = 20;  
   size_t buf_size = kSampleRate * (latency / 1000.0f);
   auto buffer = std::make_shared<SampleBuffer>(buf_size);
   auto node_graph = std::make_shared<NodeGraph>();
@@ -83,12 +59,11 @@ int main() {
   
   bridge->node_graph = node_graph;
   bridge->tracker = tracker;
-  bridge->writer = sample_writer;
 
-  auto tracker_node = std::make_shared<TrackerNode>(tracker, 0);
+  auto tracker_node = std::make_shared<TrackerNode>(tracker);
   auto unpack_node = std::make_shared<TrackerUnpackNode>();
   auto sine_node = std::make_shared<SineOscillatorNode>();
-  auto output_node = std::make_shared<OutputNode>(sample_writer);
+  auto output_node = std::make_shared<OutputNode>(node_graph);
 
   // unpack_node->GetInputByName("channel")->Connect(tracker_node->GetOutputByName("channel"));
   // sine_node->GetInputByName("freq")->Connect(unpack_node->GetOutputByName("freq"));

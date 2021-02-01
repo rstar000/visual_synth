@@ -30,8 +30,18 @@ class Tracker {
     return channels_[idx];
   }
 
-  size_t GetNumChannels() const {
+  size_t NumChannels() const {
     return channels_.size();
+  }
+  
+  // Audio thread may run the graph multiple times
+  // to process all channels in the tracker.
+  void SetActiveChannel(size_t idx) {
+    active_channel_ = idx;
+  }
+  
+  const Channel& GetActiveChannel() const {
+    return channels_[active_channel_];
   }
 
  protected:
@@ -48,13 +58,14 @@ class Tracker {
   }
 
   std::vector<Channel> channels_;
+  size_t active_channel_ = 0;
 };
 
 
 class TrackerNode : public Node {
  public:
-  TrackerNode(std::shared_ptr<Tracker> tracker, int channel)
-    : tracker(tracker), channel_idx(channel)
+  TrackerNode(std::shared_ptr<Tracker> tracker)
+    : tracker(tracker)
   {
     Channel default_channel;
     auto channel_output = std::make_shared<Output>(
@@ -64,7 +75,7 @@ class TrackerNode : public Node {
   }
 
   void Process(float timestamp) override {
-    const auto& channel =tracker->GetChannel(channel_idx);
+    const auto& channel = tracker->GetActiveChannel();
     outputs[0]->SetValue<Channel>(channel);
   }
 

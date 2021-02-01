@@ -19,10 +19,12 @@ class NodeGraph {
     // TODO
   }
 
-  void Run(float time) {
+  float Run(float time) {
     for (auto& node : nodes_) {
       node->Process(time);
     }
+    
+    return output_;
   }
 
   void AddConnection(NodePtr from, size_t output_idx, NodePtr to, size_t input_idx) {
@@ -42,6 +44,10 @@ class NodeGraph {
       std::cout << output->name << " and " << input->name << " not connected!";
     }
   }
+  
+  void SetOutput(float output) {
+    output_ = output;
+  }
 
  private:
   void SortNodes() {
@@ -50,4 +56,22 @@ class NodeGraph {
 
   std::vector<std::shared_ptr<Node>> nodes_;
   std::vector<Edge> edges_;
+  float output_;
+};
+
+class OutputNode : public Node {
+ public:
+  OutputNode(std::shared_ptr<NodeGraph> graph) 
+      : graph_(graph) {
+    auto signal = std::make_shared<Input>("signal", Dt::kFloat, this, 0.0f);
+    inputs = {signal};
+  }
+
+ protected:
+  void Process(float time) override {
+    float signal = inputs[0]->GetValue<float>();
+    graph_->SetOutput(signal);
+  }
+  
+  std::shared_ptr<NodeGraph> graph_;
 };
