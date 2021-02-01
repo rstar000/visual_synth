@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cmath>
+#include "node.h"
+#include "output.h"
 
 class Oscillator {
  public:
@@ -46,6 +48,39 @@ class Square : public Oscillator {
     return amp_ * (t > dc_ ? 1.0f : -1.0f);
   }
 
+  void SetDutyCycle(float dc) {
+    dc_ = dc;
+  }
+
  private:
   float dc_;
+};
+
+
+class OscillatorNode : public Node {
+ public:
+  OscillatorNode() {
+    auto freq = std::make_shared<Input>("freq", Dt::kFloat, this, 440.0f);
+    auto amp = std::make_shared<Input>("amp", Dt::kFloat, this, 0.5f);
+    auto signal = std::make_shared<Output>("signal", Dt::kFloat, this, 0.0f);
+
+    inputs = {freq, amp};
+    outputs = {signal};
+  }
+};
+
+class SineOscillatorNode : public OscillatorNode {
+ public:
+  SineOscillatorNode() 
+    : OscillatorNode() 
+    , osc_(std::make_shared<Sine>(440.0f, 0.0, 0.2))
+    { }
+
+ protected:
+  void Process(float time) override {
+    osc_->SetFreq(inputs[0]->GetValue<float>());
+    osc_->SetAmp(inputs[1]->GetValue<float>());
+    outputs[0]->SetValue<float>(osc_->Value(time));
+  }
+  std::shared_ptr<Sine> osc_;
 };

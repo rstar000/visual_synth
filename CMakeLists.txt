@@ -9,12 +9,17 @@ set(SOURCES
     "src/main.cpp"
     "src/output.cpp"
     "src/gui.cpp"
+    "src/bridge.cpp"
     external/imgui/imgui.cpp
     external/imgui/imgui_draw.cpp
     external/imgui/imgui_widgets.cpp
     external/imgui/imgui_demo.cpp
     external/imgui/imgui_impl_sdl.cpp
     external/imgui/imgui_impl_opengl3.cpp
+    external/imgui-node-editor/imgui_node_editor.cpp
+    external/imgui-node-editor/imgui_node_editor_api.cpp
+    external/imgui-node-editor/imgui_canvas.cpp
+    external/imgui-node-editor/crude_json.cpp
 )
 
 set(HEADERS
@@ -36,8 +41,11 @@ add_executable(
 target_include_directories(
     ${PROJECT_NAME} PUBLIC
     external/imgui
+    external/imgui-node-editor
+    external/include
     src/
 )
+
 
 target_link_libraries(${PROJECT_NAME} pthread GL GLEW SDL2 pulse)
 

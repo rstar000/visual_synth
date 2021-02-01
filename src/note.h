@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <map>
+
 #include "util.h"
 
 const float kFrequencyMultiplier = std::pow(2.0f, 1.0f / 12.0f);
@@ -23,6 +24,17 @@ struct Note {
   int octave;
   int half_steps;
   float frequency;
+};
+
+struct Channel {
+  Note note; 
+  float begin;    // Exact time when the note began playing.
+  float end;      // If pressed == true, this should be ignored.
+  float velocity;          // Value in [0, 1] range. For organ/wind instruments.
+  
+  bool Pressed() const {
+    return begin > end;
+  }
 };
 
 struct Octave {

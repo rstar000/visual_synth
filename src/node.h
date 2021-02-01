@@ -91,7 +91,7 @@ struct Input : public Connection {
     connection = nullptr;
   }
   
-  bool IsConnected(OutputPtr output) {
+  bool IsConnected(std::shared_ptr<Output> output) {
     if (!connection) {
       return false;
     }
@@ -159,13 +159,13 @@ class Node {
   }
   
   InputPtr GetInputByIndex(size_t index) {
-    ASSERT(i < inputs.size());
-    return inputs[i];
+    ASSERT(index < inputs.size());
+    return inputs[index];
   }
 
   OutputPtr GetOutputByIndex(size_t index) {
-    ASSERT(i < outputs.size());
-    return outputs[i];
+    ASSERT(index < outputs.size());
+    return outputs[index];
   }
   
   size_t NumInputs() const {

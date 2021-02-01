@@ -78,7 +78,7 @@ class KeyboardTracker : public Tracker {
     oct_ = Octave(oct);
   }
 
-  void Update(size_t timestamp) override {
+  void Update(float time) override {
     for (size_t key = 0; key < kKeysInOctave; ++key) {
       int active_channel = key_to_channel_[key];
       int is_pressed = state_->GetState(key);
@@ -91,18 +91,17 @@ class KeyboardTracker : public Tracker {
         if (!found) {
           continue;
         }
+        std::cout << "Playing key " << key << std::endl;
 
         auto& channel = channels_[*found];
-        channel.pressed = true;
         channel.note = oct_.Get(key);
-        channel.begin = timestamp;
-        channel.force = 1.0f;
+        channel.begin = time;
+        channel.velocity = 1.0f;
         key_to_channel_[key] = *found;
       } else if (active_channel != -1 && !is_pressed) {
         auto& channel = channels_[active_channel];
-        channel.pressed = false;
-        channel.end = timestamp;
-        channel.force = 0.0f;
+        channel.end = time;
+        channel.velocity = 0.0f;
         key_to_channel_[key] = -1;
       }
     }

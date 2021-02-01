@@ -3,15 +3,8 @@
 #include <optional>
 
 #include "note.h"
-
-struct Channel {
-  Note note; 
-  std::size_t begin;    // Exact time when the note began playing.
-  std::size_t end;      // If pressed == true, this should be ignored.
-  float force;          // Value in [0, 1] range. For organ/wind instruments.
-  bool pressed = false;
-};
-
+#include "node.h"
+#include "channel.h"
 // Aggregates multiple musical channels. Each channel contains
 // information about a currently playing (or silent) note on a
 // real or virtual keyboard. A tracker is needed to transform
@@ -31,7 +24,7 @@ class Tracker {
   // This method is called every audio frame.
   // It should pull all necessary data into the channels.
   // @param timestamp: beginning of the frame. 
-  virtual void Update(size_t timestamp) = 0;
+  virtual void Update(float time) = 0;
 
   const Channel& GetChannel(size_t idx) const {
     return channels_[idx];
@@ -46,7 +39,7 @@ class Tracker {
   // Returns channel index. If not found, returns nullopt.
   std::optional<size_t> FindFreeChannel() const {
     for (size_t i = 0; i < channels_.size(); ++i) {
-      if (!channels_[i].pressed) {
+      if (!channels_[i].Pressed()) {
         return i;
       }
     }
@@ -57,3 +50,55 @@ class Tracker {
   std::vector<Channel> channels_;
 };
 
+
+class TrackerNode : public Node {
+ public:
+  TrackerNode(std::shared_ptr<Tracker> tracker, int channel)
+    : tracker(tracker), channel_idx(channel)
+  {
+    Channel default_channel;
+    auto channel_output = std::make_shared<Output>(
+      "channel", Dt::kChannel, this, default_channel);
+
+    outputs = {channel_output};
+  }
+
+  void Process(float timestamp) override {
+    const auto& channel =tracker->GetChannel(channel_idx);
+    outputs[0]->SetValue<Channel>(channel);
+  }
+
+ private:
+  std::shared_ptr<Tracker> tracker;
+  int channel_idx;
+};
+
+
+class TrackerUnpackNode : public Node {
+ public:
+  TrackerUnpackNode() {
+    inputs = {
+      std::make_shared<Input>(
+        "channel", Dt::kChannel, this, Channel())
+    };
+
+    outputs = {
+      std::make_shared<Output>(
+        "freq", Dt::kFloat, this, 440.0f),
+      std::make_shared<Output>(
+        "vel", Dt::kFloat, this, 0.0f),
+      std::make_shared<Output>(
+        "begin", Dt::kFloat, this, 0.0f),
+      std::make_shared<Output>(
+        "end", Dt::kFloat, this, 0.0f)
+    };
+  }
+
+  void Process(float time) override {
+    auto channel = inputs[0]->GetValue<Channel>();
+    outputs[0]->SetValue<float>(channel.note.frequency);
+    outputs[1]->SetValue<float>(channel.velocity);
+    outputs[2]->SetValue<float>(channel.begin);
+    outputs[3]->SetValue<float>(channel.end);
+  }
+};

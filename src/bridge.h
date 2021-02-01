@@ -1,7 +1,8 @@
 
 #pragma once
-#include <iostream>
 
+#include <iostream>
+#include <memory>
 #include <map>
 
 #include "tracker.h"
@@ -19,22 +20,24 @@ enum class NodeType {
   kMix
 };
 
+struct Bridge;
+
+using BridgePtr = std::shared_ptr<Bridge>;
+
 struct NodePins {
   std::vector<int> input_ids;
   std::vector<int> output_ids;
   
   std::map<int, int> input_pin_to_input_idx;
   std::map<int, int> output_pin_to_output_idx;
-}
+};
 
 struct Bridge {
   std::shared_ptr<Tracker> tracker;  // Needed for input node
   std::shared_ptr<SampleWriter> writer;  // Needed for output node
   std::shared_ptr<NodeGraph> node_graph;
 
-  NodePtr CreateNode(NodeType node_type) {
-    
-  }
+  NodePtr CreateNode(NodeType node_type);
   
   NodePins CreatePins(NodePtr node, int node_id) {
     NodePins pins;
@@ -57,7 +60,7 @@ struct Bridge {
     int node_id = ++node_counter;
     
     node_id_to_ptr[node_id] = new_node;
-    node_id_to_pins[node_id] = CreatePins(new_node);
+    node_id_to_pins[node_id] = CreatePins(new_node, node_id);
     return node_id;
   }  
   
@@ -69,7 +72,7 @@ struct Bridge {
     node_graph->RemoveNode(node);
   }
   
-  bool IsLinkValid(int pin_from, int pin_to) {
+  bool CanAddLink(int pin_from, int pin_to) {
     // TODO
     return true;
   }
@@ -94,6 +97,17 @@ struct Bridge {
     link_id_to_pins[link_id] = std::make_pair(pin_from, pin_to);
   }
   
+  void RemoveLink(int link_id) {
+    auto [pin_from, pin_to] = link_id_to_pins[link_id];
+    int node_id_to = pin_id_to_node_id[pin_to];
+    auto node_to = node_id_to_ptr[node_id_to];
+    auto& pins_to = node_id_to_pins[node_id_to];
+    
+    int input_idx = pins_to.input_pin_to_input_idx[pin_to];
+    node_to->GetInputByIndex(input_idx)->Disconnect();
+
+    link_id_to_pins.erase(link_id);
+  }
     
   std::map<int, NodePins> node_id_to_pins;
   std::map<int, NodePtr> node_id_to_ptr;
@@ -105,4 +119,3 @@ struct Bridge {
   int pin_counter = 0;
   int link_counter = 0;
 };
-

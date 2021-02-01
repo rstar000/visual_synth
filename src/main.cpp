@@ -14,14 +14,9 @@
 #include "gui.h"
 #include "tracker.h"
 
-SampleType WaveToSample(float waveform) {
-  waveform = std::clamp(waveform, -1.0f, 1.0f);
-  if (waveform > 0) {
-    return waveform * std::numeric_limits<SampleType>::max();
-  } else {
-    return -waveform * std::numeric_limits<SampleType>::min();
-  }
-}
+#include "node_graph.h"
+#include "audio_thread.h"
+
 
 // Computes output for one channel. 
 class Pipeline {
@@ -35,7 +30,7 @@ class Pipeline {
 
   float Value(float time) {
     auto& channel = tracker_->GetChannel(channel_);
-    if (channel.pressed) {
+    if (channel.Pressed()) {
       osc_.SetAmp(0.2f);
       osc_.SetFreq(channel.note.frequency);
     } else {
@@ -75,82 +70,39 @@ class Synthesizer {
   std::vector<Pipeline> pipelines_;
 };
 
-// Spins and provides data for audio backend
-class AudioThread {
- public:
-  AudioThread(std::shared_ptr<Tracker> tracker, float latency_ms)
-      : buf_size_((static_cast<float>(latency_ms) / 1000) * kSampleRate)
-      , ring_buffer_(std::make_shared<SampleBuffer>(buf_size_))
-      , tracker_(tracker)
-      , synth_(tracker_)
-      , output_(ring_buffer_)
-      , samples(buf_size_)
-  {
-    output_.SetBuffer(ring_buffer_);
-    output_.Start();
-  }
-
-  ~AudioThread() {
-    Stop();
-  }
-
-  void Start() {
-    running_ = true;
-    thread_ = std::thread(&AudioThread::Spin, this);
-    std::cout << "Audio thread started." << std::endl;
-  }
-
-  void Stop() {
-    running_ = false;
-    if (thread_.joinable()) {
-      thread_.join();
-    }
-    std::cout << "Audio thread stopped." << std::endl;
-  }
-
- private:
-  void Spin() {
-    while (running_) {
-      size_t ready_to_write = 0;
-      while (!(ready_to_write = ring_buffer_->ReadyToWrite())) {
-        // Busy wait until data is consumed.
-        std::this_thread::yield();
-        continue;
-      }
-
-      size_t begin_ts = ring_buffer_->Position();
-      tracker_->Update(begin_ts);
-
-      for (size_t i = 0; i < ready_to_write; ++i) {
-        float time_sec = (begin_ts + i) / static_cast<float>(kSampleRate);
-        float waveform = synth_.Value(time_sec);
-        SampleType sample = WaveToSample(waveform);
-        samples[i] = sample;
-      }
-
-      ring_buffer_->Write(samples, ready_to_write);
-    }
-  }
-
-  std::size_t buf_size_;
-  std::shared_ptr<SampleBuffer> ring_buffer_;
-  std::shared_ptr<Tracker> tracker_;
-  Synthesizer synth_;
-  PulseAudioOutputHandler output_;
-  std::vector<SampleType> samples;
-
-  std::thread thread_;
-  bool running_ = false;
-};
-
 int main() {
-  Gui gui;
+  auto bridge = std::make_shared<Bridge>();
+  Gui gui(bridge);
   auto key_state = gui.GetKeyboardState();
-  const size_t latency = 1;  // 1 ms
+  const size_t latency = 2;  // 1 ms
+  size_t buf_size = kSampleRate * (latency / 1000.0f);
+  auto buffer = std::make_shared<SampleBuffer>(buf_size);
+  auto node_graph = std::make_shared<NodeGraph>();
+  auto sample_writer = std::make_shared<SampleWriter>(buffer);
+  auto tracker = std::make_shared<KeyboardTracker>(5, key_state);
+  
+  bridge->node_graph = node_graph;
+  bridge->tracker = tracker;
+  bridge->writer = sample_writer;
 
-  // Input data for the synthesizer.
-  std::shared_ptr<Tracker> tracker = std::make_shared<KeyboardTracker>(5, key_state);
-  AudioThread audio(tracker, latency);
+  auto tracker_node = std::make_shared<TrackerNode>(tracker, 0);
+  auto unpack_node = std::make_shared<TrackerUnpackNode>();
+  auto sine_node = std::make_shared<SineOscillatorNode>();
+  auto output_node = std::make_shared<OutputNode>(sample_writer);
+
+  // unpack_node->GetInputByName("channel")->Connect(tracker_node->GetOutputByName("channel"));
+  // sine_node->GetInputByName("freq")->Connect(unpack_node->GetOutputByName("freq"));
+  // sine_node->GetInputByName("amp")->Connect(unpack_node->GetOutputByName("vel"));
+  // output_node->GetInputByName("signal")->Connect(sine_node->GetOutputByName("signal"));
+  
+  bridge->AddNode(tracker_node);
+  bridge->AddNode(unpack_node);
+  bridge->AddNode(sine_node);
+  bridge->AddNode(output_node);
+
+  AudioThread audio(tracker, sample_writer, node_graph);
+  PulseAudioOutputHandler handler(buffer);
+  handler.Start();
   audio.Start();
   gui.Spin();  // Block main thread
   return 0;
