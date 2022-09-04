@@ -11,41 +11,53 @@
 #include <imgui_internal.h>
 
 #include <SDL2/SDL.h>
-#include <GL/glew.h>            // Initialize with glewInit()
+#include <SDL2/SDL_opengl.h>
 
-#include "bridge.h"
-#include "keyboard.h"
+#include "multigraph.h"
+#include "graph_io.h"
+#include "node_factory.h"
+#include "audio_thread.h"
 
 namespace ed = ax::NodeEditor;
 
 struct LinkInfo
 {
-    ed::LinkId Id;
-    ed::PinId  InputId;
-    ed::PinId  OutputId;
+  ed::LinkId Id;
+  ed::PinId  InputId;
+  ed::PinId  OutputId;
 };
 
 
 class Gui {
  public:
-  Gui(BridgePtr bridge);
+  Gui(
+    std::shared_ptr<Multigraph> graph,
+    std::shared_ptr<NodeFactory> factory,
+    std::shared_ptr<AudioThread> audio_thread);
   ~Gui();
 
   // Blocks calling thread!
   void Spin();
 
-  std::shared_ptr<const KeyboardState> GetKeyboardState() {
-    return key_state_;
-  }
+  // std::shared_ptr<const KeyboardState> GetKeyboardState() {
+  //   return key_state_;
+  // }
 
  private:
   void InitWindow();
   void DrawFrame();
+  void DrawToolbar();
+  void ShowContextMenu();
 
-  BridgePtr bridge_;
-  SDL_Window* window_;
-  SDL_GLContext gl_context_;
-  std::shared_ptr<KeyboardState> key_state_;
+  SDL_Window* window;
+  SDL_GLContext gl_context;
+  // std::shared_ptr<KeyboardState> key_state_;
+  std::shared_ptr<Multigraph> graph;
+  std::shared_ptr<NodeFactory> factory;
+  std::shared_ptr<AudioThread> audio_thread;
+  
+  FileMenu file_menu;
+  
   ax::NodeEditor::EditorContext* g_Context = nullptr;
   bool g_FirstFrame = true;
 
@@ -53,3 +65,4 @@ class Gui {
   bool show_another_window = false;
   ImVec4 clear_color;
 };
+

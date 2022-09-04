@@ -1,20 +1,27 @@
 #include "gui.h"
+#include "portable-file-dialogs.h"
 
-Gui::Gui(BridgePtr bridge)
-    : bridge_(bridge)
-    , key_state_(std::make_shared<KeyboardState>()) {
+Gui::Gui(
+  std::shared_ptr<Multigraph> graph, 
+  std::shared_ptr<NodeFactory> factory,
+  std::shared_ptr<AudioThread> audio_thread
+  )
+    : graph(graph)
+    , factory(factory)
+    , audio_thread(audio_thread)
+    , file_menu(graph, factory) {
   InitWindow();
 }
 
 Gui::~Gui() {
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplSDL2_Shutdown();
+  ed::DestroyEditor(g_Context);
   ImGui::DestroyContext();
 
-  SDL_GL_DeleteContext(gl_context_);
-  SDL_DestroyWindow(window_);
+  SDL_GL_DeleteContext(gl_context);
+  SDL_DestroyWindow(window);
   SDL_Quit();
-  ed::DestroyEditor(g_Context);
 }
 
 
@@ -25,41 +32,34 @@ void Gui::InitWindow() {
       exit(1);
   }
 
-  g_Context = ed::CreateEditor();
-
   // Decide GL+GLSL versions
-  // GL 3.2 Core + GLSL 150
-  const char* glsl_version = "#version 150";
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
+  const char* glsl_version = "#version 130";
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+  
 
   // Create window with graphics context
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
   SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
   SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-  SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-  window_ = SDL_CreateWindow("Synthesizer", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
-  SDL_GLContext gl_context = SDL_GL_CreateContext(window_);
-  SDL_GL_MakeCurrent(window_, gl_context_);
+  SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+  window = SDL_CreateWindow("Dear ImGui SDL2+OpenGL3 example", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
+  gl_context = SDL_GL_CreateContext(window);
+  SDL_GL_MakeCurrent(window, gl_context);
   SDL_GL_SetSwapInterval(1); // Enable vsync
-
-  bool err = glewInit() != GLEW_OK;
-  if (err)
-  {
-      fprintf(stderr, "Failed to initialize OpenGL loader!\n");
-      exit(1);
-  }
 
   // Setup Dear ImGui context
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
+  // ImGuiIO& io = ImGui::GetIO(); (void)io;
   ImGui::StyleColorsDark();
 
   // Setup Platform/Renderer bindings
-  ImGui_ImplSDL2_InitForOpenGL(window_, gl_context);
+  ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
   ImGui_ImplOpenGL3_Init(glsl_version);
+  g_Context = ed::CreateEditor();
 }
 
 void Gui::Spin() {
@@ -67,6 +67,7 @@ void Gui::Spin() {
 
     // Main loop
     bool done = false;
+    size_t frame_idx = 0;
     while (!done) {
         // Poll and handle events (inputs, window resize, etc.)
         // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
@@ -79,28 +80,29 @@ void Gui::Spin() {
             ImGui_ImplSDL2_ProcessEvent(&event);
             if (event.type == SDL_QUIT)
                 done = true;
-            if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window_))
+            if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
                 done = true;
 
-            if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) {
-              key_state_->ProcessEvent(event);
-            }
+            // if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) {
+              // key_state_->ProcessEvent(event);
+            // }
         }
 
         // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplSDL2_NewFrame(window_);
+        ImGui_ImplSDL2_NewFrame(window);
         ImGui::NewFrame();
         
         DrawFrame();
 
         // Rendering
+        ++frame_idx;
         ImGui::Render();
         glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
-        glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+        glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-        SDL_GL_SwapWindow(window_);
+        SDL_GL_SwapWindow(window);
   }
 }
 
@@ -122,73 +124,118 @@ void ImGuiEx_EndColumn()
 }
 
 void Gui::DrawFrame() {
-
-  // ed::Begin("My Editor");
-  // int uniqueId = 1;
-  // Start drawing nodes.
-  // ed::BeginNode(uniqueId++);
-  //     ImGui::Text("Node A");
-  //     ed::BeginPin(uniqueId++, ed::PinKind::Input);
-  //         ImGui::Text("-> In");
-  //     ed::EndPin();
-  //     ImGui::SameLine();
-  //     ed::BeginPin(uniqueId++, ed::PinKind::Output);
-  //         ImGui::Text("Out ->");
-  //     ed::EndPin();
-  // ed::EndNode();
-
     ImGui::Separator();
+    if (show_demo_window)
+       ImGui::ShowDemoWindow(&show_demo_window);
 
+    // return;
     ed::SetCurrentEditor(g_Context);
+    ImGuiWindowFlags wf = ImGuiWindowFlags_None;
 
+    bool ed_open = true;
+
+    if (!ImGui::Begin("editor", &ed_open, wf))
+    {
+        // Early out if the window is collapsed, as an optimization.
+        ImGui::End();
+        return;
+    }
+    
+    DrawToolbar();
     // Start interaction with editor.
-    ed::Begin("My Editor", ImVec2(1000.0f, 1000.0f));
+    ed::Begin("My Editor", ImVec2(0.0f, 0.0f));
+
+    if (g_FirstFrame)
+        ed::NavigateToContent(0.0f);
 
     //
     // 1) Commit known data to editor
     //
     
     int num_traversed = 0;
-    for (auto& [node_id, attrs] : bridge_->node_attrs) {
+    auto& nodes = graph->GetNodes();
+    auto& pins = graph->GetPins();
+    auto& links = graph->GetLinks();
+    
+
+    const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
+    const float TEXT_BASE_HEIGHT = ImGui::GetTextLineHeightWithSpacing();
+    const ImU32 pin_color = ImColor(180, 180, 180, 150);
+    auto draw_list = ImGui::GetWindowDrawList();
+
+    for (auto& [node_id, wrapper] : nodes) {
+      auto& node = wrapper.node;
       ++num_traversed;
-      NodePtr node = attrs.ptr;
-      if (!attrs.position) {
-        attrs.position = Position{100 * num_traversed, 0};
-        ed::SetNodePosition(node_id, ImVec2(attrs.position->x, attrs.position->y));
-      }
+      // NodePtr node = attrs.ptr;
+        // attrs.position = Position{100 * num_traversed, 0};
+      // }
       ed::NodeId g_node_id = node_id;
+      auto& node_pins = MapGetConstRef(pins.node_to_pins, node_id);
       ed::BeginNode(g_node_id);
-          std::stringstream ss;
-          ss << "Node " << node_id;
-          std::string node_name = ss.str();
-          ImGui::Text(node_name.c_str());
+          if (!wrapper.attrs->is_placed) {
+            ed::SetNodePosition(g_node_id, ImVec2(wrapper.attrs->pos_x, wrapper.attrs->pos_y));
+            wrapper.attrs->is_placed = true;
+          } else if (ed::GetHoveredNode() == g_node_id) {
+            auto pos = ed::GetNodePosition(g_node_id);
+            wrapper.attrs->pos_x = pos.x;
+            wrapper.attrs->pos_y = pos.y;
+          }
+
+          ImGui::BeginGroup();
+          ImGui::Text("%s", node->GetDisplayName().c_str());
+          ImGui::EndGroup();
+          ImGui::BeginGroup();
           ImGuiEx_BeginColumn();
-            for (auto pin_id : attrs.pins.input_ids) {
-              int input_idx = attrs.pins.input_pin_to_input_idx[pin_id];
+            for (int input_idx = 0; input_idx < node_pins.inputs.size(); ++input_idx) {
+              auto pin_id = node_pins.inputs[input_idx];
               auto input = node->GetInputByIndex(input_idx);
 
               ed::PinId g_pin_id = pin_id;
+
+              ImVec2 p = ImGui::GetCursorScreenPos();
+              p.x -= TEXT_BASE_WIDTH;
+              p.y += TEXT_BASE_HEIGHT / 2;
+
+              draw_list->AddCircleFilled(p, 5, pin_color, 10);
               ed::BeginPin(g_pin_id, ed::PinKind::Input);
-                  ImGui::Text(input->name.c_str());
+                  ed::PinRect(ImVec2(p.x-5, p.y-5), ImVec2(p.x+5, p.y+5));
+                  // ImGui::Bullet();
+                  ImGui::Text("%s %d", input->name.c_str(), pin_id);
               ed::EndPin();
             }
+
           ImGuiEx_NextColumn();
-            for (auto pin_id : attrs.pins.output_ids) {
-              int output_idx = attrs.pins.output_pin_to_output_idx[pin_id];
+
+          node->Draw();
+
+          ImGuiEx_NextColumn();
+
+            for (int output_idx = 0; output_idx < node_pins.outputs.size(); ++output_idx) {
+              auto pin_id = node_pins.outputs[output_idx];
               auto output = node->GetOutputByIndex(output_idx);
 
               ed::PinId g_pin_id = pin_id;
               ed::BeginPin(g_pin_id, ed::PinKind::Output);
-                  ImGui::Text(output->name.c_str());
+                  ImGui::Text("%s %d", output->name.c_str(), pin_id);
+                  ImGui::SameLine();
+                  ImVec2 p = ImGui::GetCursorScreenPos();
+                  // p.x += TEXT_BASE_WIDTH;
+                  p.y += TEXT_BASE_HEIGHT / 2;
+                  ed::PinRect(ImVec2(p.x-5, p.y-5), ImVec2(p.x+5, p.y+5));
+
+                  draw_list->AddCircleFilled(p, 5, pin_color, 10);
+                  // ImGui::Bullet();
               ed::EndPin();
             }
           ImGuiEx_EndColumn();
+          ImGui::EndGroup();
       ed::EndNode();
     }
 
     // Submit Links
-    for (auto& [link_id, pins] : bridge_->link_id_to_pins) {
-      ed::Link(link_id, pins.first, pins.second);
+    for (auto& [link_id, pins] : links.link_id_to_pins) {
+      ed::LinkId g_link_id = link_id;
+      ed::Link(g_link_id, pins.first, pins.second);
     }
 
     //
@@ -198,7 +245,7 @@ void Gui::DrawFrame() {
     // Handle creation action, returns true if editor want to create new object (node or link)
     if (ed::BeginCreate())
     {
-        ed::PinId inputPinId, outputPinId;
+        ed::PinId inputPinId = 0, outputPinId = 0;
         if (ed::QueryNewLink(&inputPinId, &outputPinId))
         {
             // QueryNewLink returns true if editor want to create new link between pins.
@@ -213,27 +260,32 @@ void Gui::DrawFrame() {
             //   * input invalid, output valid - user started to drag new ling from output pin
             //   * input valid, output valid   - user dragged link over other pin, can be validated
 
-            if (inputPinId && outputPinId) // both are valid, let's accept link
+            int new_link_id = -1;
+            
+            pin_id_t input_pin = static_cast<pin_id_t>(size_t(inputPinId));
+            pin_id_t output_pin = static_cast<pin_id_t>(size_t(outputPinId));
+            bool res = graph->CanAddLink(input_pin, output_pin);
+            if (res && inputPinId && outputPinId) // both are valid, let's accept link
             {
+
                 // ed::AcceptNewItem() return true when user release mouse button.
                 if (ed::AcceptNewItem())
                 {
                     // Since we accepted new link, lets add one to our list of links.
-                    int link_id = bridge_->AddLink(int(inputPinId.Get()), int(outputPinId.Get()));
-                    // Draw new link.
-                    ed::Link(link_id, inputPinId, outputPinId);
+                    bool res = graph->GetAccess()->AddLink(input_pin, output_pin, &new_link_id);
+                    ed::Link(new_link_id, inputPinId, outputPinId);
                 }
 
                 // You may choose to reject connection between these nodes
                 // by calling ed::RejectNewItem(). This will allow editor to give
                 // visual feedback by changing link thickness and color.
+            } else {
+                  ed::RejectNewItem();
             }
         }
     }
     ed::EndCreate(); // Wraps up object creation action handling.
   
-
-    /*
     // Handle deletion action
     if (ed::BeginDelete())
     {
@@ -244,73 +296,148 @@ void Gui::DrawFrame() {
             // If you agree that link can be deleted, accept deletion.
             if (ed::AcceptDeletedItem())
             {
-                // Then remove link from your data.
-                for (auto& link : g_Links)
-                {
-                    if (link.Id == deletedLinkId)
-                    {
-                        g_Links.erase(&link);
-                        break;
-                    }
-                }
+              int link_id = static_cast<int>(size_t(deletedLinkId));
+              graph->GetAccess()->RemoveLink(link_id);
             }
 
             // You may reject link deletion by calling:
             // ed::RejectDeletedItem();
         }
+        
+        ed::NodeId deletedNodeId;
+        while (ed::QueryDeletedNode(&deletedNodeId)) {
+          if (ed::AcceptDeletedItem()) {
+            int node_id = static_cast<int>(size_t(deletedNodeId));
+            graph->GetAccess()->RemoveNode(node_id);
+          }
+        } 
     }
     ed::EndDelete(); // Wrap up deletion action
-    */
-
-
 
     // End of interaction with editor.
+    //
+    //
+    ed::Suspend();
+    if (ed::ShowBackgroundContextMenu()) {
+      ImGui::OpenPopup("context_menu_popup");
+    }
+    ed::Resume();
+
+    ed::Suspend();
+    ShowContextMenu();
+    ed::Resume();
+
     ed::End();
 
     if (g_FirstFrame)
         ed::NavigateToContent(0.0f);
 
     ed::SetCurrentEditor(nullptr);
+    ImGui::End();
 
     g_FirstFrame = false;
 
     // ImGui::ShowMetricsWindow();
+    return;
+}
 
+void Gui::DrawToolbar() {
+  bool playing = audio_thread->IsPlaying();
+  static const char* play_label = "|>";
+  static const char* pause_label = "||";
+  static const char* rec_label = "o";
 
-  // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-  //if (show_demo_window)
-  //    ImGui::ShowDemoWindow(&show_demo_window);
+  const auto btn_size = ImVec2(100, 100);
 
-  // 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
-  {
-      static float f = 0.0f;
-      static int counter = 0;
-
-      ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
-
-      ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-      ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
-      ImGui::Checkbox("Another Window", &show_another_window);
-
-      ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-      ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
-
-      if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-          counter++;
-      ImGui::SameLine();
-      ImGui::Text("counter = %d", counter);
-
-      ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-      ImGui::End();
+  const char* play_pause_label = pause_label;
+  if (playing) {
+    play_pause_label = play_label;
   }
 
-  // 3. Show another simple window.
-  if (show_another_window)
-  {
-      ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-      ImGui::Text("Hello from another window!");
-      if (ImGui::Button("Close Me"))
-          show_another_window = false;
-      ImGui::End();
+  ImGui::BeginGroup();
+
+  if (ImGui::Button(play_pause_label, btn_size)) {
+    if (playing) {
+      audio_thread->Stop();
+    } else {
+      audio_thread->Start();
+    }
   }
+  
+  ImGui::SameLine();
+
+  if (ImGui::Button("Save", btn_size)) {
+    file_menu.Save();
+  }
+
+  ImGui::SameLine();
+
+  if (ImGui::Button("Import", btn_size)) {
+    file_menu.Import();
+  }
+
+  ImGui::SameLine();
+  
+  ImGui::Text("%.3f", audio_thread->GetTimestamp());
+
+  ImGui::EndGroup();
+}
+
+void Gui::ShowContextMenu() {
+    auto openPopupPosition = ImGui::GetMousePos();
+    auto canvas_pos = ed::ScreenToCanvas(openPopupPosition);
+    if (ImGui::BeginPopup("context_menu_popup"))
+    {
+      ImGui::Text("Menu");
+      ImGui::Separator();
+      
+      if (ImGui::BeginMenu("File")) {
+        auto& filename = file_menu.GetFilename();
+        if (filename) {
+          ImGui::TextWrapped("Current file: %s", filename->c_str());
+          ImGui::Separator();
+        }
+        
+        if (ImGui::MenuItem("Load JSON")) {
+          file_menu.Load();
+        }
+
+        if (filename && ImGui::MenuItem("Save")) {
+          file_menu.Save();
+        }
+
+        if (ImGui::MenuItem("Save As")) {
+          file_menu.SaveAs();
+        }
+
+        ImGui::EndMenu();
+      }
+      
+      if (ImGui::BeginMenu("Create node")) {
+        auto& nodes_by_category = factory->GetNodesByCategory();
+        auto& display_names = factory->GetDisplayNames();
+        for (auto& [category, category_name] : factory->GetCategoryNames()) {
+          if (ImGui::BeginMenu(category_name.c_str())) {
+            for (auto& type : MapGetConstRef(nodes_by_category, category)) {
+              auto& display_name = MapGetConstRef(display_names, type);
+              if (ImGui::MenuItem(display_name.c_str())) {
+                NodeWrapper wrapper;
+                wrapper.node = factory->CreateNode(type);
+                wrapper.attrs = std::make_shared<NodeAttributes>();
+                wrapper.attrs->is_placed = true;
+                wrapper.attrs->pos_x = canvas_pos.x;
+                wrapper.attrs->pos_y = canvas_pos.y;
+
+                int new_node_id = graph->GetAccess()->AddNode(wrapper);
+                ed::SetNodePosition(new_node_id, canvas_pos);
+              }
+            }
+            ImGui::EndMenu();
+          }
+        }
+        ImGui::EndMenu();
+      }
+      
+      ImGui::EndPopup();
+    }
 }

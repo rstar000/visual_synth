@@ -28,13 +28,17 @@ struct Note {
 
 struct Channel {
   Note note; 
-  float begin;    // Exact time when the note began playing.
-  float end;      // If pressed == true, this should be ignored.
-  float velocity;          // Value in [0, 1] range. For organ/wind instruments.
+  float begin = 0.0f;    // Exact time when the note began playing.
+  float end = 0.0f;      
+  float velocity = 0.0f;     // Value in [0, 1] range. For organ/wind instruments.
   
-  bool Pressed() const {
+  bool IsPlaying() const {
     return begin > end;
   }
+};
+
+enum class Tone {
+  C, Db, D, Eb, E, F, Gb, G, Ab, A, Bb, B
 };
 
 struct Octave {
@@ -50,15 +54,14 @@ struct Octave {
     }
   }
 
-  const Note& Get(const std::string& code) const {
-    auto it = codes_.find(code);
+  const Note& Get(const std::string& name) const {
+    auto it = codes_.find(name);
     ASSERT(it != codes_.end());
     return notes_[it->second];
   }
 
-  const Note& Get(std::size_t index) const {
-    ASSERT(index < 12);
-    return notes_[index];
+  const Note& Get(Tone tone) const {
+    return notes_[static_cast<size_t>(tone)];
   }
 
  private:

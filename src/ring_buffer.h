@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 #include <atomic>
+#include <span>
 
 #include "util.h"
 
@@ -55,7 +56,23 @@ class RingBuffer {
     read_position_.store(head + n);
   }
 
-  // This many element can be read when the function is called.
+  void Read(T* dst, std::size_t n) {
+    std::span<T> sp(dst, n);
+    auto head = read_position_.load();
+    auto position = head % size_;
+    if (n > size_ - position) {
+      std::copy(data_.begin() + position, data_.end(), sp.begin());
+      std::size_t num_copied = size_ - position;
+      std::size_t remaining = n - num_copied;
+      std::copy(data_.begin(), data_.begin() + remaining, sp.begin() + num_copied);
+    } else {
+      std::copy(data_.begin() + position, data_.begin() + position + n, sp.begin());
+    }
+
+    read_position_.store(head + n);
+  }
+
+  // This many elements can be read when the function is called.
   // If you read more, result could be undefined.
   std::size_t ReadyToRead() const {
     return write_position_.load() - read_position_.load();

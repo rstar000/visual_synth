@@ -11,8 +11,8 @@
 #include <pulse/pulseaudio.h>
 
 #include "ring_buffer.h"
-#include "node.h"
-#include "node_graph.h"
+
+#include "rtaudio/RtAudio.h"
 
 // Audio constants are all hardcoded here for now.
 const int kSampleRate = 44100;
@@ -22,32 +22,8 @@ const int kNumChannels = 2;
 using SampleType = std::int16_t;  // 16 bit.
 using SampleBuffer = RingBuffer<SampleType>;
 
-void context_state_cb(
-    pa_context* context, void* mainloop);
-void stream_state_cb(
-    pa_stream *stream, void *mainloop);
-void stream_success_cb(
-    pa_stream *stream, int success, void *userdata);
-
-
-// All "magic" happens here. Userdata is a pointer to ringbuffer.
-void stream_write_cb(
-    pa_stream *stream, std::size_t requested_bytes, void *userdata);
-
-class PulseAudioOutputHandler {
- public:
-  PulseAudioOutputHandler(const std::shared_ptr<SampleBuffer>& buffer);
-  ~PulseAudioOutputHandler();
-
-  void SetBuffer(const std::shared_ptr<SampleBuffer>& buffer);
-  void Stop();
-  void Start();
-
- private:
-  pa_threaded_mainloop *mainloop;
-  pa_mainloop_api *mainloop_api;
-  pa_context *context;
-  pa_stream *stream;
+struct AudioOutput {
+  float wave;
 };
 
 inline SampleType WaveToSample(float waveform) {
@@ -59,6 +35,20 @@ inline SampleType WaveToSample(float waveform) {
   }
 }
 
+class RtAudioOutputHandler {
+ public:
+  RtAudioOutputHandler(int buf_size);
+  ~RtAudioOutputHandler();
+  void Start();
+  void Stop();
+  bool IsPlaying() const;
+  auto GetBuffer() { return buf; }
+
+ private:
+  RtAudio dac;
+  std::shared_ptr<SampleBuffer> buf;
+};
+
 // Helper for writing to intermediate buffer and ring buffer
 class SampleWriter {
  public:
@@ -69,7 +59,7 @@ class SampleWriter {
   
   // ! Best way to get most accurate time  !
   float GetTimestamp() const {
-    auto position = buffer_->Position();
+    size_t position = buffer_->Position() % (360 * kSampleRate);
     return (position + sample_idx_) / static_cast<float>(kSampleRate);
   }
   
