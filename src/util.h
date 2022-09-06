@@ -100,10 +100,12 @@ inline void Assert(bool b, const string& hint) {
 }
 
 #define ASSERT(x) {                     \
-  ostringstream os;                     \
-  os << #x << " is false, "             \
-    << __FILE__ << ":" << __LINE__;     \
-  Assert(x, os.str());                  \
+  if (!bool(x)) {  \
+    ostringstream os;                     \
+    os << #x << " is false, "             \
+      << __FILE__ << ":" << __LINE__;     \
+    Assert(x, os.str());                  \
+  } \
 }
 
 
@@ -181,3 +183,22 @@ inline std::string GenLabel(std::string unique, const void* obj, std::string vis
   ss << visible << "##" << unique << "_" << reinterpret_cast<intptr_t>(obj);
   return ss.str();
 }
+
+struct TimeIt
+{
+    chrono::high_resolution_clock::time_point t0;
+    function<void(float)> cb;
+    
+    TimeIt(function<void(float)> callback)
+        : t0(chrono::high_resolution_clock::now())
+        , cb(callback)
+    {
+    }
+    ~TimeIt(void)
+    {
+        auto  t1 = chrono::high_resolution_clock::now();
+        chrono::duration<float, std::milli> ms_double = t1 - t0;
+ 
+        cb(ms_double.count());
+    }
+};

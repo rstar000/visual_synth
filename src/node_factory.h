@@ -7,9 +7,6 @@
 #include "node_types.h"
 #include "output.h"
 
-struct Context {
-  std::shared_ptr<AudioOutput> output;
-};
 
 enum class NodeCategory {
   OCSILLATOR,
@@ -48,20 +45,14 @@ struct NodeFactory {
   
  private:
   template <typename T>
-  void RegisterSimpleNode(NodeCategory category) {
-    factory[T::TYPE] = [] () -> NodePtr {
-      return std::make_shared<T>();
+  void RegisterNode(NodeCategory category) {
+    factory[T::TYPE] = [this] () -> NodePtr {
+      return std::make_shared<T>(ctx);
     };
     display_names[T::TYPE] = T::DISPLAY_NAME;
     nodes_by_category[category].push_back(T::TYPE);
   }
 
-  template <typename T>
-  void RegisterContextNode(NodeCategory category, std::function<NodePtr()> func) {
-    factory[T::TYPE] = func; 
-    display_names[T::TYPE] = T::DISPLAY_NAME;
-    nodes_by_category[category].push_back(T::TYPE);
-  }
 
   std::map<NodeType, std::function<NodePtr()>> factory;
   std::map<NodeType, std::string> display_names;

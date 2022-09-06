@@ -6,26 +6,18 @@
 
 #include "imgui.h"
 
-class OscillatorNode : public Node {
- public:
-  OscillatorNode() {
-    auto freq = std::make_shared<Input>("freq", PinDataType::kFloat, this, 440.0f);
-    auto amp = std::make_shared<Input>("amp", PinDataType::kFloat, this, 0.5f);
-    auto phase = std::make_shared<Input>("phase", PinDataType::kFloat, this, 0.0f);
-    auto signal = std::make_shared<Output>("signal", PinDataType::kFloat, this, 0.0f);
-
-    inputs = {freq, amp, phase};
-    outputs = {signal};
-  }
-};
-
-struct SineOscillatorNode : public OscillatorNode {
+struct SineOscillatorNode : public Node {
   static inline const std::string DISPLAY_NAME = "Sine wave";
   static inline const NodeType TYPE = NodeType::SINE_OSC;
 
-  SineOscillatorNode() : OscillatorNode() { 
+  SineOscillatorNode(const Context& ctx) : Node(ctx) { 
     type = TYPE;
     display_name = DISPLAY_NAME;
+
+    AddInput("freq", PinDataType::kFloat, 440.0f);
+    AddInput("amp", PinDataType::kFloat, 0.5f);
+    AddInput("phase", PinDataType::kFloat, 0.0f);
+    AddOutput("signal", PinDataType::kFloat, 0.0f);
     
     freq_label = GenLabel("1", this, "freq");
     amp_label = GenLabel("2", this, "amp");
@@ -35,20 +27,20 @@ struct SineOscillatorNode : public OscillatorNode {
 
   void Process(float time) override {
     if (inputs[0]->IsConnected()) {
-      freq = inputs[0]->GetValue<float>();
+      freq = GetInputValue<float>(0);
     } else {
       freq = freq_param;
     }
 
     if (inputs[1]->IsConnected()) {
-      amp = inputs[1]->GetValue<float>();
+      amp = GetInputValue<float>(1);
     } else {
       amp = amp_param;
     }
     
-    float phase = inputs[2]->GetValue<float>();
+    float phase = GetInputValue<float>(2);
     float wave = amp * sin(time * 2.0 * M_PI * freq + phase);
-    outputs[0]->SetValue<float>(wave);
+    SetOutputValue<float>(0, wave);
   }
   
   void Draw() override {
@@ -79,29 +71,34 @@ struct SineOscillatorNode : public OscillatorNode {
   std::string amp_label;
 };
 
-struct SquareOscillatorNode : public OscillatorNode {
+struct SquareOscillatorNode : public Node {
   static inline const std::string DISPLAY_NAME = "Square wave";
   static inline const NodeType TYPE = NodeType::SQUARE_OSC;
 
-  SquareOscillatorNode() : OscillatorNode() { 
+  SquareOscillatorNode(const Context& ctx) : Node(ctx) { 
     type = TYPE;
     display_name = DISPLAY_NAME;
+
+    AddInput("freq", PinDataType::kFloat, 440.0f);
+    AddInput("amp", PinDataType::kFloat, 0.5f);
+    AddInput("phase", PinDataType::kFloat, 0.0f);
+    AddOutput("signal", PinDataType::kFloat, 0.0f);
   }
 
   ~SquareOscillatorNode() {}
 
   void Process(float time) override {
     if (inputs[0]->IsConnected()) {
-      freq = inputs[0]->GetValue<float>();
+      freq = GetInputValue<float>(0);
     }
 
     if (inputs[1]->IsConnected()) {
-      amp = inputs[1]->GetValue<float>();
+      amp = GetInputValue<float>(1);
     }
 
     float t = std::fmod(time,  1.0f / freq) * freq;
     float wave = amp * (t > 0.5f ? 1.0f : -1.0f);
-    outputs[0]->SetValue<float>(wave);
+    SetOutputValue<float>(0, wave);
   }
   
  private: 

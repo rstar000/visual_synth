@@ -64,11 +64,11 @@ void Gui::InitWindow() {
 
 void Gui::Spin() {
     ImGuiIO& io = ImGui::GetIO(); (void)io;
+    _running = true;
 
     // Main loop
-    bool done = false;
     size_t frame_idx = 0;
-    while (!done) {
+    while (_running) {
         // Poll and handle events (inputs, window resize, etc.)
         // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
         // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
@@ -79,13 +79,17 @@ void Gui::Spin() {
         {
             ImGui_ImplSDL2_ProcessEvent(&event);
             if (event.type == SDL_QUIT)
-                done = true;
+                _running = false;
             if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
-                done = true;
+                _running = false;
 
             // if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) {
               // key_state_->ProcessEvent(event);
             // }
+        }
+        
+        if (!_running) {
+          return;
         }
 
         // Start the Dear ImGui frame
@@ -182,7 +186,7 @@ void Gui::DrawFrame() {
           }
 
           ImGui::BeginGroup();
-          ImGui::Text("%s", node->GetDisplayName().c_str());
+          ImGui::Text("%s %d", node->GetDisplayName().c_str(), node_id);
           ImGui::EndGroup();
           ImGui::BeginGroup();
           ImGuiEx_BeginColumn();

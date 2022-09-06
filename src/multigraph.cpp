@@ -5,47 +5,45 @@
 #include <map>
 #include <vector>
 #include <stack>
+#include <deque>
 
 using Edges = std::vector<std::set<int>>;
 
-std::vector<int> TopologicalSort(int num_vertices, const Edges& edges) {
+std::vector<int> TopologicalSort(int num_vertices, Edges edges) {
   std::vector<std::uint8_t> visited(num_vertices, 0);
-  
-  // false == regular node, true == finished processing children for this node.
-  std::stack<std::pair<int, bool>> nodes;
-  std::vector<int> order;
-  order.reserve(num_vertices);
-
-  for (int i = 0; i < num_vertices; ++i) {
-    if (visited[i]) {
-      continue;
+  Edges incoming(num_vertices);
+  for (int n = 0; n < num_vertices; ++n) {
+    for (int m : edges[n]) {
+      incoming[m].insert(n);
     }
+  }
+  
+  std::deque<int> no_incoming;
+  std::vector<int> order;
+  for (int m = 0; m < num_vertices; ++m) {
+    if (incoming[m].empty()) {
+      no_incoming.push_back(m);
+    }
+  }
+  
+  while (!no_incoming.empty()) {
+    int n = no_incoming.front();
+    no_incoming.pop_front();
+    order.push_back(n);
+    
+    auto edges_n = edges[n];
+    for (int m : edges_n) {
+      // Erase n->m
+      edges[n].erase(m);
+      incoming[m].erase(n);
 
-    nodes.push(std::make_pair(i, false));
-
-    while (!nodes.empty()) {
-      auto [s, flag] = nodes.top();
-      nodes.pop();
-      
-      if (flag) {
-        order.push_back(s);
-        continue;
-      }
-
-      if (!visited[s]) {
-        visited[s] = true;
-      }
-      
-      nodes.push(std::make_pair(s, true));
-      for (const auto& adjacent : edges[s]) {
-        if (!visited[adjacent]) {
-          nodes.push(std::make_pair(adjacent, false));
-        }
+      if (incoming[m].empty()) {
+        no_incoming.push_back(m);
       }
     }
   }
   
-  std::reverse(order.begin(), order.end());
+  // false == regular node, true == finished processing children for this node.
   return order;
 }
 
@@ -53,12 +51,14 @@ std::vector<int> TopologicalSort(int num_vertices, const Edges& edges) {
 void Multigraph::SortNodes() {
   // Map nodes to simple 1->N index
   std::map<Node*, int> node_index;
+  std::map<Node*, int> node_to_graph_index;
   std::vector<Node*> nodes_list;
   int index = 0;
   nodes_list.reserve(nodes.size());
-  for (auto& [_, wrapper] : nodes) {
+  for (auto& [id, wrapper] : nodes) {
     Node* node_ptr = wrapper.node.get();
     node_index[node_ptr] = index++;
+    node_to_graph_index[node_ptr] = id;
     nodes_list.push_back(node_ptr);
   }
     
@@ -81,9 +81,12 @@ void Multigraph::SortNodes() {
   auto order = TopologicalSort(nodes.size(), edges);
   
   nodes_ordered.resize(nodes.size());
+  std::cout << "Order: [ ";
   for (int i = 0; i < nodes_list.size(); ++i) {
     nodes_ordered[i] = nodes_list[order[i]];
+    std::cout << node_to_graph_index[nodes_list[order[i]]] << ", ";
   }
+  std::cout << " ]" << std::endl;
 }
 
 void SaveGraph(const Multigraph& g, nlohmann::json& j) {

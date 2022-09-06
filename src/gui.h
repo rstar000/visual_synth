@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <thread>
 #include <stdio.h>
 
 #include "imgui.h"
@@ -36,6 +37,28 @@ class Gui {
     std::shared_ptr<AudioThread> audio_thread);
   ~Gui();
 
+  void Start() {
+    if (_running) {
+      return;
+    }
+    _running = true;
+    _thread = std::thread(&Gui::Spin, this);
+    std::cout << "GUI thread started";
+  }
+  
+  void Stop() {
+    if (!_running) {
+      return;
+    }
+    
+    _running = false;
+    if (_thread.joinable()) {
+      _thread.join();
+    }
+    
+    std::cout << "GUI thread stopped" << std::endl;
+  }
+
   // Blocks calling thread!
   void Spin();
 
@@ -64,5 +87,8 @@ class Gui {
   bool show_demo_window = true;
   bool show_another_window = false;
   ImVec4 clear_color;
+  
+  std::thread _thread;
+  bool _running = false;
 };
 

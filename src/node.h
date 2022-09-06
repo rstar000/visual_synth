@@ -8,9 +8,11 @@
 #include <string>
 #include <map>
 
-#include "note.h"
 #include "node_types.h"
 #include "util.h"
+
+#include "note.h"
+#include "output.h"
 
 #include "json.hpp"
 
@@ -32,6 +34,13 @@ class Node;
 using NodePtr = std::shared_ptr<Node>;
 
 
+// Constructor argument for all nodes
+struct Context {
+  std::shared_ptr<SampleWriter> writer;
+  int num_samples;
+  int num_voices;
+};
+
 struct Connection {
   Connection(const std::string& name, PinDataType type, Node* parent)
     : name(name), type(type), parent(parent) { }
@@ -43,56 +52,69 @@ struct Connection {
 // Doesn't store reference to its connections
 // cause there could be multiple connected inputs.
 struct Output : public Connection {
-  Output(const std::string& name, PinDataType type, Node* parent, PinData default_value)
+  Output(
+    const std::string& name, 
+    PinDataType type, 
+    Node* parent, 
+    PinData default_value,
+    int num_samples,
+    int num_voices)
       : Connection(name, type, parent)
-      , value(default_value) { }
-  PinData value;
+      , num_samples(num_samples)
+      , num_voices(num_voices)
+      , value(num_voices * num_samples, default_value) { }
+  
+  const int num_samples;
+  const int num_voices;
+  std::vector<PinData> value;
 
   template <typename T> 
-  T GetValue() const {
-    const T* t_ptr = std::get_if<T>(&value);
-    ASSERT(t_ptr);
-    return *t_ptr;
+  const T& GetValue(int voice_idx, int sample_idx) const {
+    return std::get<T>(value[GetIndex(voice_idx, sample_idx)]);
   }
 
   template <typename T> 
-  T& GetValue() {
-    T* t_ptr = std::get_if<T>(&value);
-    ASSERT(t_ptr);
-    return *t_ptr;
+  T& GetValue(int voice_idx, int sample_idx) {
+    return std::get<T>(value[GetIndex(voice_idx, sample_idx)]);
   }
 
   template <typename T>
-  void SetValue(T t) {
-    value = t;
+  void SetValue(int voice_idx, int sample_idx, const T& new_value) {
+    value[GetIndex(voice_idx, sample_idx)] = new_value;
   }
   
-  template <typename T>
-  bool IsT() const {
-    return std::holds_alternative<T>(value);
+ private:
+  int GetIndex(int voice_idx, int sample_idx) const {
+    return num_samples * voice_idx + sample_idx;
   }
 };
 
 struct Input : public Connection {
-  Input(const std::string& name, PinDataType type, Node* parent, PinData default_value)
+  Input(
+    const std::string& name, 
+    PinDataType type, 
+    Node* parent, 
+    PinData default_value,
+    int num_voices)
       : Connection(name, type, parent)
+      , num_voices(num_voices)
       , default_value(default_value) { 
   }
 
+  const int num_voices;
   std::shared_ptr<Output> connection;
   PinData default_value;
 
   template <typename T>
-  T GetValue() const {
-    if (connection && connection->IsT<T>()) {
-      return connection->GetValue<T>();
+  const T& GetValue(int voice_idx, int sample_idx) const {
+    if (connection) {
+      return connection->GetValue<T>(voice_idx, sample_idx);
     }
     return std::get<T>(default_value);
   }
 
   bool Connect(std::shared_ptr<Output> output) {
-    // TODO: after debugging replace asserts with warnings.
-    if (parent == output->parent || type != output->type) {
+    if (parent == output->parent || type != output->type || num_voices != output->num_voices) {
       return false;
     }
     connection = output;
@@ -122,37 +144,12 @@ using OutputPtr = std::shared_ptr<Output>;
 
 class Node {
  public:
-  Node() = default;
+  Node(const Context& ctx) 
+    : num_samples(ctx.num_samples)
+    , num_voices(ctx.num_voices)
+  { }
+
   virtual ~Node() = default;
-
-  void Update(std::size_t timestamp) {
-    ASSERT(last_update <= timestamp);
-    if (last_update != timestamp) {
-      Process(timestamp);
-    }
-  }
-
-  InputPtr GetInputByName(const std::string& name) {
-    for (auto& input : inputs) {
-      if (input->name == name) {
-        return input;
-      }
-    }
-
-    std::cout << "Input " << name << " not found!" << std::endl; 
-    return nullptr;
-  }
-
-  OutputPtr GetOutputByName(const std::string& name) {
-    for (auto& output : outputs) {
-      if (output->name == name) {
-        return output;
-      }
-    }
-    
-    std::cout << "Output " << name << " not found!" << std::endl; 
-    return nullptr;
-  }
   
   InputPtr GetInputByIndex(size_t index) {
     ASSERT(index < inputs.size());
@@ -180,6 +177,12 @@ class Node {
     return type;
   }
 
+  void Process(int voice_idx, int sample_idx, float time) {
+    _active_voice = voice_idx;
+    _active_sample = sample_idx;
+    Process(time);
+  }
+  
   virtual void Process(float time) = 0;
   virtual void Draw() {}
   
@@ -187,6 +190,45 @@ class Node {
   virtual void Save(nlohmann::json& j) const {};
 
  protected:
+  void AddInput(const std::string& name, PinDataType dtype, PinData default_value, bool mono = false) {
+    int _num_voices = mono ? 1 : num_voices;
+    inputs.push_back(std::make_shared<Input>(name, dtype, this, default_value, _num_voices));
+  }
+
+  void AddOutput(const std::string& name, PinDataType dtype, PinData default_value, bool mono = false) {
+    int _num_voices = mono ? 1 : num_voices;
+    outputs.push_back(std::make_shared<Output>(name, dtype, this, default_value, num_samples, _num_voices));
+  }
+
+  int GetActiveSample() const {
+    return _active_sample;
+  }
+
+  int GetActiveVoice() const {
+    return _active_voice;
+  }
+  
+  template <typename T>
+  const T& GetInputValue(int input_idx) {
+    return inputs[input_idx]->GetValue<T>(_active_voice, _active_sample);
+  }
+
+  template <typename T>
+  void SetOutputValue(int output_idx, const T& new_value) {
+    return outputs[output_idx]->SetValue<T>(_active_voice, _active_sample, new_value);
+  }
+  
+  template <typename T>
+  T& GetOutputValue(int output_idx) {
+    return outputs[output_idx]->GetValue<T>(_active_voice, _active_sample);
+  }
+
+  const int num_samples;
+  const int num_voices;
+  
+  int _active_sample = 0;
+  int _active_voice = 0;
+
   std::string display_name;
   NodeType type;
   std::size_t last_update = -1;

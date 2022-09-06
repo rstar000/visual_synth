@@ -7,19 +7,18 @@
 
 #include "imgui.h"
 
+#include "ImGui_Piano_imp.h"
+
 // Will enable the note every tick in the measure for a specified amount of time
 struct ClockNode : public Node {
   static inline const std::string DISPLAY_NAME = "Clock";
   static inline const NodeType TYPE = NodeType::CLOCK;
 
-  ClockNode() : oct(1) {
+  ClockNode(const Context& ctx) : Node(ctx), oct(1) {
     type = TYPE;
     display_name = DISPLAY_NAME;
 
-    inputs = {};
-    outputs = {
-      std::make_shared<Output>("ch", PinDataType::kChannel, this, Channel{})
-    };
+    AddOutput("ch", PinDataType::kChannel, Channel{});
 
     bpm_slider_label = GenLabel("slider", this);
     bpm_label = GenLabel("bpm", this);
@@ -30,7 +29,7 @@ struct ClockNode : public Node {
   ~ClockNode() {}
 
   void Process(float time) override {
-    Channel& value = outputs[0]->GetValue<Channel>();
+    Channel& value = GetOutputValue<Channel>(0);
     float quater_beat_length = 60.0f / bpm_param;
     float measure_beat_length = quater_beat_length * 4.0f / static_cast<float>(measure_param[1]);
     int beat_id = static_cast<int>(time / measure_beat_length) % measure_param[0];
@@ -78,29 +77,122 @@ struct ChannelUnpackNode : public Node {
   static inline const std::string DISPLAY_NAME = "Channel unpack";
   static inline const NodeType TYPE = NodeType::CHANNEL_UNPACK;
 
-  ChannelUnpackNode() {
+  ChannelUnpackNode(const Context& ctx) : Node(ctx) {
     type = TYPE;
     display_name = DISPLAY_NAME;
 
-    inputs = {
-      std::make_shared<Input>("ch", PinDataType::kChannel, this, Channel{})
-    };
+    AddInput("ch", PinDataType::kChannel, Channel{});
 
-    outputs = {
-      std::make_shared<Output>("freq",  PinDataType::kFloat, this, 0.0f),
-      std::make_shared<Output>("begin", PinDataType::kFloat, this, 0.0f),
-      std::make_shared<Output>("end",   PinDataType::kFloat, this, 0.0f),
-      std::make_shared<Output>("vel",   PinDataType::kFloat, this, 0.0f)
-    };
+    AddOutput("freq",  PinDataType::kFloat, 0.0f);
+    AddOutput("begin", PinDataType::kFloat, 0.0f);
+    AddOutput("end",   PinDataType::kFloat, 0.0f);
+    AddOutput("vel",   PinDataType::kFloat, 0.0f);
   }
   
   ~ChannelUnpackNode() {}
 
   void Process(float time) override {
-    auto in = inputs[0]->GetValue<Channel>();
-    outputs[0]->SetValue<float>(in.note.frequency);
-    outputs[1]->SetValue<float>(in.begin);
-    outputs[2]->SetValue<float>(in.end);
-    outputs[3]->SetValue<float>(in.velocity);
+    auto in = GetInputValue<Channel>(0);
+    SetOutputValue<float>(0, in.note.frequency);
+    SetOutputValue<float>(1, in.begin);
+    SetOutputValue<float>(2, in.end);
+    SetOutputValue<float>(3, in.velocity);
   }
+};
+
+struct KeyboardData {
+  std::array<std::uint8_t, 128> keys;
+};
+
+inline bool TestPianoBoardFunct(void* UserData, int Msg, int Key, float Vel) {
+    KeyboardData* kbd = static_cast<KeyboardData*>(UserData);
+		if (Key >= 128) return false; // midi max keys
+		if (Msg == NoteGetStatus) {
+      return kbd->keys[Key];
+    }
+    
+		if (Msg == NoteOn) { 
+      kbd->keys[Key] = 1;
+    }
+
+		if (Msg == NoteOff) { 
+      kbd->keys[Key] = 0;
+    }
+		return true;
+}
+
+
+struct PianoNode : public Node {
+  static inline const std::string DISPLAY_NAME = "Piano";
+  static inline const NodeType TYPE = NodeType::PIANO;
+
+  PianoNode(const Context& ctx) : Node(ctx) {
+    type = TYPE;
+    display_name = DISPLAY_NAME;
+
+    AddOutput("ch",  PinDataType::kChannel, Channel{});
+    std::fill(kbd.keys.begin(), kbd.keys.end(), 0);
+    for (int i = 0; i < 7; ++i) {
+      oct.push_back(Octave(i - 2));
+    }
+  }
+  
+  ~PianoNode() {}
+
+  void Process(float time) override {
+    if (GetActiveVoice() != 0) {
+      return;
+    }
+    auto& out = GetOutputValue<Channel>(0);
+    out.velocity = 0.0f;
+    
+    bool pressed = false;
+    for (int i = 0; i < kbd.keys.size(); ++i) {
+      if (kbd.keys[i]) {
+        if (i < 3) {
+          break;
+        }
+        
+        int note_idx = i - 24;  // We have some invisible keys...
+        int oct_idx = note_idx / 12;
+        if (oct_idx >= oct.size()) {
+          break;
+        }
+        
+        int oct_note_idx = note_idx % 12;
+        auto& note = oct[oct_idx].Get(static_cast<Tone>(oct_note_idx));
+        out.note = note;
+        pressed = true;
+
+        // Just pressed
+        if (prev_note != note_idx) {
+          out.begin = time;
+        } 
+        out.end = time + 100.0f;
+        out.velocity = 1.0f;
+        break;
+      }
+    }
+      
+    if (!pressed) {
+      if (prev_note > 0) {
+        prev_note = -1;
+        out.end = time;
+        out.velocity = 0.0f;
+      }
+    }
+    // SetOutputValue<float>(0, in.note.frequency);
+    // SetOutputValue<float>(1, in.begin);
+    // SetOutputValue<float>(2, in.end);
+    // SetOutputValue<float>(3, in.velocity);
+  }
+  
+  void Draw() {
+    ImGui_PianoKeyboard("##piano", ImVec2(1024, 100), &prev_note, 21, 108, TestPianoBoardFunct, &kbd, nullptr);
+  }
+  
+ private:
+  KeyboardData kbd;
+  int prev_note;
+  std::vector<Octave> oct;
 };

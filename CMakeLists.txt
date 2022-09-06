@@ -3,7 +3,7 @@ set (CMAKE_CXX_STANDARD 20)
 
 project(Synth)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_CXX_FLAGS "-O2 -Wall")
+set(CMAKE_CXX_FLAGS "-O2  -Wall")
 
 set(SOURCES
     "src/main.cpp"

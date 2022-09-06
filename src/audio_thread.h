@@ -4,6 +4,7 @@
 #include <memory>
 #include <vector>
 #include <cmath>
+#include <chrono>
 #include <limits>
 #include <chrono>
 #include <algorithm>
@@ -17,20 +18,19 @@
 class AudioThread {
  public:
   AudioThread(
-    std::shared_ptr<RtAudioOutputHandler> rt_out,
-    std::shared_ptr<Multigraph> graph)
+    std::shared_ptr<Multigraph> graph,
+    const Context& ctx)
       : graph(graph)
-      , rt_out(rt_out)
-      , writer(rt_out->GetBuffer())
-      , output(std::make_shared<AudioOutput>()) {
-  }
+      , writer(ctx.writer)
+      , num_voices(ctx.num_voices) 
+      , num_samples(ctx.num_samples) {
+    }
 
   ~AudioThread() {
     Stop();
   }
 
   void Start() {
-    rt_out->Start();
     running_ = true;
     thread_ = std::thread(&AudioThread::Spin, this);
     std::cout << "Audio thread started." << std::endl;
@@ -42,8 +42,6 @@ class AudioThread {
       thread_.join();
     }
     std::cout << "Audio thread stopped." << std::endl;
-    
-    rt_out->Stop();
   }
   
   void PlayPause() {
@@ -58,21 +56,20 @@ class AudioThread {
     return running_;
   }
   
-  auto GetOutput() {
-    return output;
+  float GetTimestamp(int sample_idx) {
+    return writer->GetTimestamp(sample_idx);
   }
-  
+
   float GetTimestamp() {
-    return writer.GetTimestamp();
+    return writer->GetTimestamp(0);
   }
 
  private:
   void Spin() {
     while (running_) {
       size_t ready_to_write = 0;
-      while (running_ && !(ready_to_write = writer.ReadyToWrite())) {
+      while (running_ && !(ready_to_write = writer->ReadyToWrite())) {
         // Busy wait until data is consumed.
-        std::this_thread::yield();
         continue;
       }
       
@@ -84,27 +81,31 @@ class AudioThread {
       // Graph mutex locked
       auto access = graph->GetAccess();
       auto nodes = access->GetSortedNodes();
-
-      for (size_t i = 0; i < ready_to_write; ++i) {
-        float timestamp = writer.GetTimestamp();
+      
+      for (int v = 0; v < num_voices; ++v) {
         for (auto node : nodes) {
-          node->Process(timestamp);
+          for (size_t s = 0; s < ready_to_write; ++s) {
+            float timestamp = writer->GetTimestamp(s);
+            node->Process(v, s, timestamp);
+          }
         }
-        
-        writer.Write(output->wave);
       }
 
       }
       
-      writer.Flush();
+      // {
+      //   TimeIt([] (const auto& x) { std::cout << "Flush " << x << std::endl;});
+      writer->Flush(ready_to_write);
+      // }
     }
   }
 
   std::shared_ptr<Multigraph> graph;
-  std::shared_ptr<RtAudioOutputHandler> rt_out;
-  SampleWriter writer;
-  std::shared_ptr<AudioOutput> output;
+  std::shared_ptr<SampleWriter> writer;
 
   std::thread thread_;
   bool running_ = false;
+  
+  int num_voices;
+  int num_samples;
 };

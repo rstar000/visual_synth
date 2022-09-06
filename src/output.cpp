@@ -24,14 +24,14 @@ RtAudioOutputHandler::RtAudioOutputHandler(int buf_size)
     exit(1);
   }
   
-  unsigned int _buf_size = static_cast<unsigned int>(buf_size);
+  unsigned int _buf_size = static_cast<unsigned int>(buf_size) / 4;
   
   RtAudio::StreamParameters params;
   params.deviceId = dac.getDefaultOutputDevice();
   params.nChannels = 1;
 
   RtAudio::StreamOptions options;
-  options.flags = 0;
+  options.flags = RTAUDIO_MINIMIZE_LATENCY | RTAUDIO_HOG_DEVICE | RTAUDIO_NONINTERLEAVED;
 
   try {
     dac.openStream(

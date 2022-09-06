@@ -22,9 +22,6 @@ const int kNumChannels = 2;
 using SampleType = std::int16_t;  // 16 bit.
 using SampleBuffer = RingBuffer<SampleType>;
 
-struct AudioOutput {
-  float wave;
-};
 
 inline SampleType WaveToSample(float waveform) {
   waveform = std::clamp(waveform, -1.0f, 1.0f);
@@ -58,29 +55,28 @@ class SampleWriter {
   }
   
   // ! Best way to get most accurate time  !
-  float GetTimestamp() const {
+  float GetTimestamp(int sample_idx) const {
+    // TODO: remove 360. Hack to get accurate float precision
     size_t position = buffer_->Position() % (360 * kSampleRate);
-    return (position + sample_idx_) / static_cast<float>(kSampleRate);
+    return (position + sample_idx) / static_cast<float>(kSampleRate);
   }
   
   std::size_t ReadyToWrite() {
     return buffer_->ReadyToWrite();
   }
   
-  void Write(float wave) {
-    ASSERT(sample_idx_ < samples_.size());
+  void Write(float wave, int sample_idx) {
+    ASSERT(sample_idx < samples_.size());
     auto sample = WaveToSample(wave);
-    samples_[sample_idx_] = sample;
-    ++sample_idx_;
+    samples_[sample_idx] += sample;
   }
 
-  void Flush() {
-    buffer_->Write(samples_, sample_idx_);
-    sample_idx_ = 0;
+  void Flush(int num_samples) {
+    buffer_->Write(samples_, num_samples);
+    std::fill(samples_.begin(), samples_.end(), 0);
   }
 
  public:
   std::shared_ptr<SampleBuffer> buffer_;
   std::vector<SampleType> samples_;
-  size_t sample_idx_ = 0;
 };

@@ -13,12 +13,11 @@ struct SliderNode : public Node {
   static inline const std::string DISPLAY_NAME = "Slider";
   static inline const NodeType TYPE = NodeType::SLIDER;
 
-  SliderNode() {
+  SliderNode(const Context& ctx) : Node(ctx) {
     type = TYPE;
     display_name = DISPLAY_NAME;
 
-    auto signal_out = std::make_shared<Output>("signal", PinDataType::kFloat, this, 0.0f);
-    outputs = {signal_out};
+    AddOutput("signal", PinDataType::kFloat, 0.0f);
     slider_label = GenLabel("slider", this);
     input_label = GenLabel("input", this);
   }
@@ -26,7 +25,7 @@ struct SliderNode : public Node {
   ~SliderNode() {}
 
   void Process(float time) override {
-    outputs[0]->SetValue<float>(signal);
+    SetOutputValue<float>(0, signal);
   }
   
   void Draw() override {
@@ -62,19 +61,18 @@ struct ConstantNode : public Node {
   static inline const std::string DISPLAY_NAME = "Constant";
   static inline const NodeType TYPE = NodeType::CONSTANT;
 
-  ConstantNode() { 
+  ConstantNode(const Context& ctx) : Node(ctx) { 
     type = TYPE;
     display_name = DISPLAY_NAME;
 
-    auto signal_out = std::make_shared<Output>("signal", PinDataType::kFloat, this, 0.0f);
-    outputs = {signal_out};
+    AddOutput("signal", PinDataType::kFloat, 0.0f);
     input_label = GenLabel("input", this);
   }
 
   ~ConstantNode() {}
 
   void Process(float time) override {
-    outputs[0]->SetValue<float>(signal);
+    SetOutputValue<float>(0, signal);
   }
   
   void Draw() override {
@@ -100,17 +98,14 @@ struct MixNode : public Node {
   static inline const std::string DISPLAY_NAME = "Mix";
   static inline const NodeType TYPE = NodeType::MIX;
 
-  MixNode() { 
+  MixNode(const Context& ctx) : Node(ctx) { 
     type = TYPE;
     display_name = DISPLAY_NAME;
 
-    auto input_a = std::make_shared<Input>("input_a", PinDataType::kFloat, this, 0.0f);
-    auto input_b = std::make_shared<Input>("input_b", PinDataType::kFloat, this, 0.0f);
-    auto alpha = std::make_shared<Input>("alpha", PinDataType::kFloat, this, 0.0f);
-    auto signal = std::make_shared<Output>("signal", PinDataType::kFloat, this, 0.0f);
-
-    inputs = {input_a, input_b, alpha};
-    outputs = {signal};
+    AddInput("input_a", PinDataType::kFloat, 0.0f);
+    AddInput("input_b", PinDataType::kFloat, 0.0f);
+    AddInput("alpha", PinDataType::kFloat, 0.0f);
+    AddOutput("signal", PinDataType::kFloat, 0.0f);
 
     slider_label = GenLabel("slider", this);
   }
@@ -118,14 +113,14 @@ struct MixNode : public Node {
   ~MixNode() {}
 
   void Process(float time) override {
-    float alpha = inputs[2]->GetValue<float>();
+    float alpha = GetInputValue<float>(2);
     if (!inputs[2]->IsConnected()) {
       alpha = alpha_param;
     }
 
-    float res = inputs[0]->GetValue<float>() * (1.0f - alpha) + 
-                inputs[1]->GetValue<float>() * alpha;
-    outputs[0]->SetValue<float>(res);
+    float res = GetInputValue<float>(0) * (1.0f - alpha) + 
+                GetInputValue<float>(1) * alpha;
+    SetOutputValue<float>(0, res);
   }
   
   void Draw() override {
@@ -153,26 +148,23 @@ struct AddNode : public Node {
   static inline const std::string DISPLAY_NAME = "Add";
   static inline const NodeType TYPE = NodeType::ADD;
 
-  AddNode() { 
+  AddNode(const Context& ctx) : Node(ctx) { 
     type = TYPE;
     display_name = DISPLAY_NAME;
 
-    auto input_a = std::make_shared<Input>("a", PinDataType::kFloat, this, 0.0f);
-    auto input_b = std::make_shared<Input>("b", PinDataType::kFloat, this, 0.0f);
-    auto input_c = std::make_shared<Input>("c", PinDataType::kFloat, this, 0.0f);
-    auto signal  = std::make_shared<Output>("signal", PinDataType::kFloat, this, 0.0f);
-
-    inputs = {input_a, input_b, input_c};
-    outputs = {signal};
+    AddInput("a", PinDataType::kFloat, 0.0f);
+    AddInput("b", PinDataType::kFloat, 0.0f);
+    AddInput("c", PinDataType::kFloat, 0.0f);
+    AddOutput("signal", PinDataType::kFloat, 0.0f);
   }
 
   ~AddNode() {}
 
   void Process(float time) override {
-    float res = inputs[0]->GetValue<float>() + 
-                inputs[1]->GetValue<float>() +
-                inputs[2]->GetValue<float>();
-    outputs[0]->SetValue<float>(res);
+    float res = GetInputValue<float>(0) + 
+                GetInputValue<float>(1) +
+                GetInputValue<float>(2);
+    SetOutputValue<float>(0, res);
   }
 };
 
@@ -180,24 +172,21 @@ struct MultiplyNode : public Node {
   static inline const std::string DISPLAY_NAME = "Multiply";
   static inline const NodeType TYPE = NodeType::MULTIPLY;
 
-  MultiplyNode() { 
+  MultiplyNode(const Context& ctx) : Node(ctx) { 
     type = TYPE;
     display_name = DISPLAY_NAME;
 
-    auto input_a = std::make_shared<Input>("a", PinDataType::kFloat, this, 1.0f);
-    auto input_b = std::make_shared<Input>("b", PinDataType::kFloat, this, 1.0f);
-    auto signal  = std::make_shared<Output>("signal", PinDataType::kFloat, this, 0.0f);
-
-    inputs = {input_a, input_b};
-    outputs = {signal};
+    AddInput("a", PinDataType::kFloat, 0.0f);
+    AddInput("b", PinDataType::kFloat, 0.0f);
+    AddOutput("signal", PinDataType::kFloat, 0.0f);
   }
 
   ~MultiplyNode() {}
 
   void Process(float time) override {
-    float res = inputs[0]->GetValue<float>() * 
-                inputs[1]->GetValue<float>(); 
-    outputs[0]->SetValue<float>(res);
+    float res = GetInputValue<float>(0) * 
+                GetInputValue<float>(1); 
+    SetOutputValue(0, res);
   }
 };
 
@@ -205,27 +194,25 @@ struct ClampNode : public Node {
   static inline const std::string DISPLAY_NAME = "Clamp";
   static inline const NodeType TYPE = NodeType::CLAMP;
 
-  ClampNode() { 
+  ClampNode(const Context& ctx) : Node(ctx) { 
     type = TYPE;
     display_name = DISPLAY_NAME;
 
-    inputs = {
-      std::make_shared<Input>("x", PinDataType::kFloat, this, 1.0f),
-      std::make_shared<Input>("v_min", PinDataType::kFloat, this, 1.0f),
-      std::make_shared<Input>("v_max", PinDataType::kFloat, this, 1.0f)
-    };
-    outputs = {std::make_shared<Output>("signal", PinDataType::kFloat, this, 0.0f)};
+    AddInput("x", PinDataType::kFloat, 1.0f);
+    AddInput("v_min", PinDataType::kFloat, 1.0f);
+    AddInput("v_max", PinDataType::kFloat, 1.0f);
+    AddOutput("signal", PinDataType::kFloat, 0.0f);
   }
 
   ~ClampNode() {}
 
   void Process(float time) override {
-    float x = inputs[0]->GetValue<float>();
-    float v_min = inputs[1]->GetValue<float>();
-    float v_max = inputs[2]->GetValue<float>();
+    float x = GetInputValue<float>(0);
+    float v_min = GetInputValue<float>(1);
+    float v_max = GetInputValue<float>(2);
 
     float res = std::clamp(x, v_min, v_max);
-    outputs[0]->SetValue<float>(res);
+    SetOutputValue<float>(0, res);
   }
 };
 
@@ -233,19 +220,18 @@ struct NegateNode : public Node {
   static inline const std::string DISPLAY_NAME = "Negate";
   static inline const NodeType TYPE = NodeType::NEGATE;
 
-  NegateNode() { 
+  NegateNode(const Context& ctx) : Node(ctx) {
     type = TYPE;
     display_name = DISPLAY_NAME;
 
-    inputs = {std::make_shared<Input>("x", PinDataType::kFloat, this, 0.0f)};
-    outputs = {std::make_shared<Output>("y", PinDataType::kFloat, this, 0.0f)};
+    AddInput("x", PinDataType::kFloat, 0.0f);
+    AddOutput("y", PinDataType::kFloat, 0.0f);
   }
 
   ~NegateNode() {}
 
   void Process(float time) override {
-    float x = inputs[0]->GetValue<float>();
-    outputs[0]->SetValue<float>(-x);
+    SetOutputValue<float>(0, -GetInputValue<float>(0));
   }
 };
 
@@ -255,11 +241,11 @@ struct DebugNode : public Node {
   static inline const std::string DISPLAY_NAME = "Debug";
   static inline const NodeType TYPE = NodeType::DEBUG;
 
-  DebugNode() : values(NUM_DEBUG_VALUES) { 
+  DebugNode(const Context& ctx) : Node(ctx), values(NUM_DEBUG_VALUES) { 
     type = TYPE;
     display_name = DISPLAY_NAME;
 
-    inputs = {std::make_shared<Input>("x", PinDataType::kFloat, this, 0.0f)};
+    AddInput("x", PinDataType::kFloat, 0.0f);
     
     plot_label = GenLabel("plot", this);
     min_max_label = GenLabel("mm", this);
@@ -269,6 +255,10 @@ struct DebugNode : public Node {
   ~DebugNode() {}
 
   void Process(float time) override {
+    if (GetActiveVoice() != 0) {
+      return;
+    }
+
     if (time < prev_time) {
       prev_time = time;
     }
@@ -278,7 +268,7 @@ struct DebugNode : public Node {
     }
 
     prev_time = time;
-    float val = inputs[0]->GetValue<float>();
+    float val = GetInputValue<float>(0);
     values[cur_idx % NUM_DEBUG_VALUES] = val;
     ++cur_idx;
   }

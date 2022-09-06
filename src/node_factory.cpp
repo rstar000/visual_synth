@@ -20,24 +20,22 @@ void NodeFactory::RegisterCategories() {
 }
 
 void NodeFactory::RegisterNodes() {
-  RegisterContextNode<AudioOutputNode>(NodeCategory::IO, [this] () -> NodePtr {
-    return std::make_shared<AudioOutputNode>(ctx.output);
-  });
-  
-  RegisterSimpleNode<SineOscillatorNode>(NodeCategory::OCSILLATOR);
-  RegisterSimpleNode<SquareOscillatorNode>(NodeCategory::OCSILLATOR);
+  RegisterNode<AudioOutputNode>(NodeCategory::IO);
+  RegisterNode<PianoNode>(NodeCategory::IO);
+  RegisterNode<SineOscillatorNode>(NodeCategory::OCSILLATOR);
+  RegisterNode<SquareOscillatorNode>(NodeCategory::OCSILLATOR);
 
-  RegisterSimpleNode<SliderNode>(NodeCategory::UTILITY);
-  RegisterSimpleNode<ConstantNode>(NodeCategory::UTILITY);
-  RegisterSimpleNode<ChannelUnpackNode>(NodeCategory::UTILITY);
+  RegisterNode<SliderNode>(NodeCategory::UTILITY);
+  RegisterNode<ConstantNode>(NodeCategory::UTILITY);
+  RegisterNode<ChannelUnpackNode>(NodeCategory::UTILITY);
 
-  RegisterSimpleNode<AddNode>(NodeCategory::ARITHMETIC);
-  RegisterSimpleNode<MultiplyNode>(NodeCategory::ARITHMETIC);
-  RegisterSimpleNode<NegateNode>(NodeCategory::ARITHMETIC);
-  RegisterSimpleNode<MixNode>(NodeCategory::ARITHMETIC);
-  RegisterSimpleNode<ClampNode>(NodeCategory::ARITHMETIC);
+  RegisterNode<AddNode>(NodeCategory::ARITHMETIC);
+  RegisterNode<MultiplyNode>(NodeCategory::ARITHMETIC);
+  RegisterNode<NegateNode>(NodeCategory::ARITHMETIC);
+  RegisterNode<MixNode>(NodeCategory::ARITHMETIC);
+  RegisterNode<ClampNode>(NodeCategory::ARITHMETIC);
 
-  RegisterSimpleNode<DebugNode>(NodeCategory::DEBUG);
+  RegisterNode<DebugNode>(NodeCategory::DEBUG);
 
-  RegisterSimpleNode<ClockNode>(NodeCategory::SEQUENCER);
+  RegisterNode<ClockNode>(NodeCategory::SEQUENCER);
 }
