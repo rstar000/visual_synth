@@ -2,31 +2,40 @@
 #include "multigraph.h"
 #include "gui.h"
 #include "node_factory.h"
-#include "audio_thread.h"
+#include "midi.h"
 
 #include <thread>
 #include <cmath>
 
 int main() {
-  int buf_size = 2000;
-  int num_voices = 6;
+  int buf_size = 100;
+  int num_voices = 10;
 
   auto graph = std::make_shared<Multigraph>();
-  auto rt_output = std::make_shared<RtAudioOutputHandler>(buf_size);
-  auto writer = std::make_shared<SampleWriter>(rt_output->GetBuffer());
+  auto writer = std::make_shared<SampleWriter>();
+  auto midi_tracker = std::make_shared<MidiTracker>(num_voices);
+  auto midi = std::make_shared<MidiInput>(midi_tracker);
 
-  Context context{
+  auto rt_output = std::make_shared<AudioOutputHandler>(AudioOutputHandler::Params{
+      .graph = graph,
       .writer = writer,
+      .buf_size = buf_size
+  });
+
+  auto factory = std::make_shared<NodeFactory>(NodeParams{
+      .writer = writer,
+      .tracker = midi_tracker,
       .num_samples = buf_size, 
       .num_voices = num_voices
-  };
-
-  auto audio_thread = std::make_shared<AudioThread>(graph, context);
-  auto factory = std::make_shared<NodeFactory>(context);
+  });
   
-  auto gui = Gui(graph, factory, audio_thread);
+  auto gui = Gui(Gui::Params{
+      .graph = graph, 
+      .factory = factory, 
+      .midi_tracker = midi_tracker
+  });
   
-  audio_thread->Start();
+  // audio_thread->Start();
   gui.Spin();
 
   return 0;

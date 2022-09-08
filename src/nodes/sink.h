@@ -1,14 +1,15 @@
 #pragma once
 
 #include "node.h"
-#include "audio_thread.h"
+#include "output.h"
+// #include "audio_thread.h"
 
 
 struct AudioOutputNode : public Node {
   static inline const std::string DISPLAY_NAME = "Audio Output";
   static inline const NodeType TYPE = NodeType::OUTPUT;
 
-  AudioOutputNode(const Context& ctx) 
+  AudioOutputNode(const NodeParams& ctx) 
       : Node(ctx)
       , writer(ctx.writer) { 
     type = TYPE;

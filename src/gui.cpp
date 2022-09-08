@@ -1,15 +1,11 @@
 #include "gui.h"
 #include "portable-file-dialogs.h"
 
-Gui::Gui(
-  std::shared_ptr<Multigraph> graph, 
-  std::shared_ptr<NodeFactory> factory,
-  std::shared_ptr<AudioThread> audio_thread
-  )
-    : graph(graph)
-    , factory(factory)
-    , audio_thread(audio_thread)
-    , file_menu(graph, factory) {
+Gui::Gui(Params params)
+    : graph(params.graph)
+    , factory(params.factory)
+    , key_input(params.midi_tracker)
+    , file_menu(params.graph, params.factory) {
   InitWindow();
 }
 
@@ -62,6 +58,7 @@ void Gui::InitWindow() {
   g_Context = ed::CreateEditor();
 }
 
+
 void Gui::Spin() {
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     _running = true;
@@ -83,9 +80,15 @@ void Gui::Spin() {
             if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
                 _running = false;
 
-            // if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) {
-              // key_state_->ProcessEvent(event);
-            // }
+            if (event.type == SDL_KEYDOWN && event.key.repeat == 0) {
+              auto sym = event.key.keysym.sym;
+              key_input.ProcessKey(sym, true);
+            }
+
+            if (event.type == SDL_KEYUP) {
+              auto sym = event.key.keysym.sym;
+              key_input.ProcessKey(sym, false);
+            }
         }
         
         if (!_running) {
@@ -145,7 +148,7 @@ void Gui::DrawFrame() {
         return;
     }
     
-    DrawToolbar();
+    // DrawToolbar();
     // Start interaction with editor.
     ed::Begin("My Editor", ImVec2(0.0f, 0.0f));
 
@@ -345,47 +348,47 @@ void Gui::DrawFrame() {
     return;
 }
 
-void Gui::DrawToolbar() {
-  bool playing = audio_thread->IsPlaying();
-  static const char* play_label = "|>";
-  static const char* pause_label = "||";
-  static const char* rec_label = "o";
+// void Gui::DrawToolbar() {
+//   bool playing = audio_thread->IsPlaying();
+//   static const char* play_label = "|>";
+//   static const char* pause_label = "||";
+//   static const char* rec_label = "o";
 
-  const auto btn_size = ImVec2(100, 100);
+//   const auto btn_size = ImVec2(100, 100);
 
-  const char* play_pause_label = pause_label;
-  if (playing) {
-    play_pause_label = play_label;
-  }
+//   const char* play_pause_label = pause_label;
+//   if (playing) {
+//     play_pause_label = play_label;
+//   }
 
-  ImGui::BeginGroup();
+//   ImGui::BeginGroup();
 
-  if (ImGui::Button(play_pause_label, btn_size)) {
-    if (playing) {
-      audio_thread->Stop();
-    } else {
-      audio_thread->Start();
-    }
-  }
+//   if (ImGui::Button(play_pause_label, btn_size)) {
+//     if (playing) {
+//       audio_thread->Stop();
+//     } else {
+//       audio_thread->Start();
+//     }
+//   }
   
-  ImGui::SameLine();
+//   ImGui::SameLine();
 
-  if (ImGui::Button("Save", btn_size)) {
-    file_menu.Save();
-  }
+//   if (ImGui::Button("Save", btn_size)) {
+//     file_menu.Save();
+//   }
 
-  ImGui::SameLine();
+//   ImGui::SameLine();
 
-  if (ImGui::Button("Import", btn_size)) {
-    file_menu.Import();
-  }
+//   if (ImGui::Button("Import", btn_size)) {
+//     file_menu.Import();
+//   }
 
-  ImGui::SameLine();
+//   ImGui::SameLine();
   
-  ImGui::Text("%.3f", audio_thread->GetTimestamp());
+//   ImGui::Text("%.3f", audio_thread->GetTimestamp());
 
-  ImGui::EndGroup();
-}
+//   ImGui::EndGroup();
+// }
 
 void Gui::ShowContextMenu() {
     auto openPopupPosition = ImGui::GetMousePos();
@@ -434,6 +437,7 @@ void Gui::ShowContextMenu() {
 
                 int new_node_id = graph->GetAccess()->AddNode(wrapper);
                 ed::SetNodePosition(new_node_id, canvas_pos);
+
               }
             }
             ImGui::EndMenu();

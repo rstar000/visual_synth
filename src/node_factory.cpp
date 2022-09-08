@@ -22,6 +22,7 @@ void NodeFactory::RegisterCategories() {
 void NodeFactory::RegisterNodes() {
   RegisterNode<AudioOutputNode>(NodeCategory::IO);
   RegisterNode<PianoNode>(NodeCategory::IO);
+  RegisterNode<MidiNode>(NodeCategory::IO);
   RegisterNode<SineOscillatorNode>(NodeCategory::OCSILLATOR);
   RegisterNode<SquareOscillatorNode>(NodeCategory::OCSILLATOR);
 

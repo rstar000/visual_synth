@@ -10,7 +10,7 @@ struct SineOscillatorNode : public Node {
   static inline const std::string DISPLAY_NAME = "Sine wave";
   static inline const NodeType TYPE = NodeType::SINE_OSC;
 
-  SineOscillatorNode(const Context& ctx) : Node(ctx) { 
+  SineOscillatorNode(const NodeParams& ctx) : Node(ctx) { 
     type = TYPE;
     display_name = DISPLAY_NAME;
 
@@ -75,7 +75,7 @@ struct SquareOscillatorNode : public Node {
   static inline const std::string DISPLAY_NAME = "Square wave";
   static inline const NodeType TYPE = NodeType::SQUARE_OSC;
 
-  SquareOscillatorNode(const Context& ctx) : Node(ctx) { 
+  SquareOscillatorNode(const NodeParams& ctx) : Node(ctx) { 
     type = TYPE;
     display_name = DISPLAY_NAME;
 

@@ -18,7 +18,7 @@ enum class NodeCategory {
 };
 
 struct NodeFactory {
-  NodeFactory(const Context& ctx) : ctx(ctx) { 
+  NodeFactory(const NodeParams& ctx) : ctx(ctx) { 
     RegisterCategories();
     RegisterNodes();
   };
@@ -59,6 +59,6 @@ struct NodeFactory {
   std::map<NodeCategory, std::string> category_names;
   std::map<NodeCategory, std::vector<NodeType>> nodes_by_category;
 
-  Context ctx;
+  NodeParams ctx;
   NodeNames names;
 };

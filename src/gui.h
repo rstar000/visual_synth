@@ -17,24 +17,21 @@
 #include "multigraph.h"
 #include "graph_io.h"
 #include "node_factory.h"
-#include "audio_thread.h"
+#include "note.h"
+#include "midi.h"
+// #include "audio_thread.h"
 
 namespace ed = ax::NodeEditor;
 
-struct LinkInfo
-{
-  ed::LinkId Id;
-  ed::PinId  InputId;
-  ed::PinId  OutputId;
-};
-
-
 class Gui {
  public:
-  Gui(
-    std::shared_ptr<Multigraph> graph,
-    std::shared_ptr<NodeFactory> factory,
-    std::shared_ptr<AudioThread> audio_thread);
+  struct Params {
+    std::shared_ptr<Multigraph> graph;
+    std::shared_ptr<NodeFactory> factory;
+    std::shared_ptr<MidiTracker> midi_tracker;
+  };
+   
+  Gui(Params params);
   ~Gui();
 
   void Start() {
@@ -69,7 +66,7 @@ class Gui {
  private:
   void InitWindow();
   void DrawFrame();
-  void DrawToolbar();
+  // void DrawToolbar();
   void ShowContextMenu();
 
   SDL_Window* window;
@@ -77,8 +74,9 @@ class Gui {
   // std::shared_ptr<KeyboardState> key_state_;
   std::shared_ptr<Multigraph> graph;
   std::shared_ptr<NodeFactory> factory;
-  std::shared_ptr<AudioThread> audio_thread;
+  std::shared_ptr<MidiTracker> tracker;
   
+  KeyboardInput key_input;
   FileMenu file_menu;
   
   ax::NodeEditor::EditorContext* g_Context = nullptr;

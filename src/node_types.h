@@ -19,6 +19,7 @@
        X(CLOCK) \
        X(CHANNEL_UNPACK) \
        X(PIANO) \
+       X(MIDI) \
        X(MIX) 
 
 enum class NodeType {

@@ -13,6 +13,7 @@
 
 #include "note.h"
 #include "output.h"
+#include "midi.h"
 
 #include "json.hpp"
 
@@ -35,8 +36,9 @@ using NodePtr = std::shared_ptr<Node>;
 
 
 // Constructor argument for all nodes
-struct Context {
+struct NodeParams {
   std::shared_ptr<SampleWriter> writer;
+  std::shared_ptr<MidiTracker> tracker;
   int num_samples;
   int num_voices;
 };
@@ -144,7 +146,7 @@ using OutputPtr = std::shared_ptr<Output>;
 
 class Node {
  public:
-  Node(const Context& ctx) 
+  Node(const NodeParams& ctx) 
     : num_samples(ctx.num_samples)
     , num_voices(ctx.num_voices)
   { }
@@ -167,6 +169,10 @@ class Node {
 
   size_t NumOutputs() const {
     return outputs.size();
+  }
+  
+  int NumVoices() const {
+    return num_voices;
   }
   
   const std::string& GetDisplayName() const {

@@ -43,7 +43,6 @@ std::vector<int> TopologicalSort(int num_vertices, Edges edges) {
     }
   }
   
-  // false == regular node, true == finished processing children for this node.
   return order;
 }
 

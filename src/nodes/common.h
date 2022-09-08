@@ -13,7 +13,7 @@ struct SliderNode : public Node {
   static inline const std::string DISPLAY_NAME = "Slider";
   static inline const NodeType TYPE = NodeType::SLIDER;
 
-  SliderNode(const Context& ctx) : Node(ctx) {
+  SliderNode(const NodeParams& ctx) : Node(ctx) {
     type = TYPE;
     display_name = DISPLAY_NAME;
 
@@ -61,7 +61,7 @@ struct ConstantNode : public Node {
   static inline const std::string DISPLAY_NAME = "Constant";
   static inline const NodeType TYPE = NodeType::CONSTANT;
 
-  ConstantNode(const Context& ctx) : Node(ctx) { 
+  ConstantNode(const NodeParams& ctx) : Node(ctx) { 
     type = TYPE;
     display_name = DISPLAY_NAME;
 
@@ -98,7 +98,7 @@ struct MixNode : public Node {
   static inline const std::string DISPLAY_NAME = "Mix";
   static inline const NodeType TYPE = NodeType::MIX;
 
-  MixNode(const Context& ctx) : Node(ctx) { 
+  MixNode(const NodeParams& ctx) : Node(ctx) { 
     type = TYPE;
     display_name = DISPLAY_NAME;
 
@@ -148,7 +148,7 @@ struct AddNode : public Node {
   static inline const std::string DISPLAY_NAME = "Add";
   static inline const NodeType TYPE = NodeType::ADD;
 
-  AddNode(const Context& ctx) : Node(ctx) { 
+  AddNode(const NodeParams& ctx) : Node(ctx) { 
     type = TYPE;
     display_name = DISPLAY_NAME;
 
@@ -172,7 +172,7 @@ struct MultiplyNode : public Node {
   static inline const std::string DISPLAY_NAME = "Multiply";
   static inline const NodeType TYPE = NodeType::MULTIPLY;
 
-  MultiplyNode(const Context& ctx) : Node(ctx) { 
+  MultiplyNode(const NodeParams& ctx) : Node(ctx) { 
     type = TYPE;
     display_name = DISPLAY_NAME;
 
@@ -194,7 +194,7 @@ struct ClampNode : public Node {
   static inline const std::string DISPLAY_NAME = "Clamp";
   static inline const NodeType TYPE = NodeType::CLAMP;
 
-  ClampNode(const Context& ctx) : Node(ctx) { 
+  ClampNode(const NodeParams& ctx) : Node(ctx) { 
     type = TYPE;
     display_name = DISPLAY_NAME;
 
@@ -220,7 +220,7 @@ struct NegateNode : public Node {
   static inline const std::string DISPLAY_NAME = "Negate";
   static inline const NodeType TYPE = NodeType::NEGATE;
 
-  NegateNode(const Context& ctx) : Node(ctx) {
+  NegateNode(const NodeParams& ctx) : Node(ctx) {
     type = TYPE;
     display_name = DISPLAY_NAME;
 
@@ -241,7 +241,7 @@ struct DebugNode : public Node {
   static inline const std::string DISPLAY_NAME = "Debug";
   static inline const NodeType TYPE = NodeType::DEBUG;
 
-  DebugNode(const Context& ctx) : Node(ctx), values(NUM_DEBUG_VALUES) { 
+  DebugNode(const NodeParams& ctx) : Node(ctx), values(NUM_DEBUG_VALUES) { 
     type = TYPE;
     display_name = DISPLAY_NAME;
 

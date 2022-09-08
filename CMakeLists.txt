@@ -7,6 +7,7 @@ set(CMAKE_CXX_FLAGS "-O2  -Wall")
 
 set(SOURCES
     "src/main.cpp"
+    "src/midi.cpp"
     "src/output.cpp"
     "src/multigraph.cpp"
     "src/node_factory.cpp"
@@ -40,5 +41,4 @@ target_include_directories(
 )
 
 
-target_link_libraries(${PROJECT_NAME} pthread GL SDL2 pulse rtaudio)
-
+target_link_libraries(${PROJECT_NAME} pthread GL SDL2 pulse rtaudio rtmidi)
