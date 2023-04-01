@@ -4,6 +4,7 @@
 #include "nodes/sink.h"
 #include "nodes/common.h"
 #include "nodes/seq.h"
+#include "nodes/env.h"
 
 template <typename T>
 void RegisterDisplayName(std::map<NodeType, std::string>& m) {
@@ -23,12 +24,15 @@ void NodeFactory::RegisterNodes() {
   RegisterNode<AudioOutputNode>(NodeCategory::IO);
   RegisterNode<PianoNode>(NodeCategory::IO);
   RegisterNode<MidiNode>(NodeCategory::IO);
+
   RegisterNode<SineOscillatorNode>(NodeCategory::OCSILLATOR);
   RegisterNode<SquareOscillatorNode>(NodeCategory::OCSILLATOR);
+  RegisterNode<SuperOscNode>(NodeCategory::OCSILLATOR);
 
   RegisterNode<SliderNode>(NodeCategory::UTILITY);
   RegisterNode<ConstantNode>(NodeCategory::UTILITY);
   RegisterNode<ChannelUnpackNode>(NodeCategory::UTILITY);
+  RegisterNode<ADSRNode>(NodeCategory::UTILITY);
 
   RegisterNode<AddNode>(NodeCategory::ARITHMETIC);
   RegisterNode<MultiplyNode>(NodeCategory::ARITHMETIC);

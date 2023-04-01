@@ -274,11 +274,11 @@ struct DebugNode : public Node {
   }
   
   void Draw() override {
-    auto data = std::vector<float>(values.begin(), values.end());
     ImGui::PushItemWidth(200.0f);
-    ImGui::PlotLines(plot_label.c_str(), data.data(), data.size(), cur_idx, NULL, v_min_max[0], v_min_max[1], ImVec2(0, 80));
+    ImGui::PlotLines(plot_label.c_str(), values.data(), values.size(), cur_idx, NULL, v_min_max[0], v_min_max[1], ImVec2(0, 80));
     ImGui::InputFloat2(min_max_label.c_str(), v_min_max.data(), "%.2f", ImGuiInputTextFlags_None);
     ImGui::SliderFloat(slider_label.c_str(), &resolution, 0.0f, 1000.0f, "%.2f", ImGuiSliderFlags_None);
+    ImGui::Text("%.2f", values.back());
     ImGui::PopItemWidth();
   }
 

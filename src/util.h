@@ -164,6 +164,16 @@ inline void JsonGetValue(const nlohmann::json& j, const std::string& key, T& dst
 }
 
 template <typename T>
+inline void JsonGetValue(const nlohmann::json& j, const std::string& key, T& dst, const T& _default) {
+  auto it = j.find(key);
+  if (it == j.end()) {
+    dst = _default;
+  } else {
+    dst = it->get<T>(); 
+  }
+}
+
+template <typename T>
 inline void JsonSetValue(nlohmann::json& j, const std::string& name, T value) {
   ASSERT(j.find(name) == j.end());
   j[name] = value;
@@ -202,3 +212,12 @@ struct TimeIt
         cb(ms_double.count());
     }
 };
+
+// inline string Join(const std::vector<std::string>& xs, const std::string delim) {
+//   return std::accumulate(
+//       std::begin(xs), std::end(xs), string(),
+//       [&delim] (string &ss, string &s)
+//       {
+//           return ss.empty() ? s : ss + delim + s;
+//       });
+// }

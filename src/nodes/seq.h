@@ -145,7 +145,7 @@ struct PianoNode : public Node {
       return;
     }
     auto& out = GetOutputValue<Channel>(0);
-    out.velocity = 0.0f;
+    out.velocity = 1.0f;
     
     bool pressed = false;
     for (int i = 0; i < kbd.keys.size(); ++i) {
@@ -154,7 +154,7 @@ struct PianoNode : public Node {
           break;
         }
         
-        int note_idx = i - 24;  // We have some invisible keys...
+        int note_idx = i - kMidiOffset;  // We have some invisible keys...
         if (note_idx < 0) {
           break;
         }
@@ -163,16 +163,17 @@ struct PianoNode : public Node {
           break;
         }
         
-        int oct_note_idx = note_idx % 12;
+        int oct_note_idx = note_idx % kHalfStepsPerOctave;
         auto& note = oct[oct_idx].Get(static_cast<Tone>(oct_note_idx));
         out.note = note;
         pressed = true;
 
-        std::cout << note_idx << ' ' << oct_idx << ' ' << oct_note_idx << ' ' << note.frequency << std::endl;
         // Just pressed
-        if (prev_note != note_idx) {
-          out.begin = time;
-        } 
+        if (!prev_pressed) {
+          prev_pressed = true;
+          press_begin = time;
+        }
+        out.begin = press_begin;
         out.end = time + 100.0f;
         out.velocity = 1.0f;
         break;
@@ -180,11 +181,15 @@ struct PianoNode : public Node {
     }
       
     if (!pressed) {
-      if (prev_note > 0) {
+      if (prev_pressed) {
+        // Just released
         // prev_note = -1;
-        out.end = time;
-        out.velocity = 0.0f;
+        prev_pressed = false;
+        press_end = time;
       }
+      
+      out.end = press_end;
+      out.velocity = 1.0f;
     }
   }
   
@@ -196,6 +201,10 @@ struct PianoNode : public Node {
   KeyboardData kbd;
   int prev_note;
   std::vector<Octave> oct;
+  
+  bool prev_pressed = false;
+  float press_begin = 0.0f;
+  float press_end = 0.0f;
 };
 
 struct MidiNode : public Node {
@@ -204,7 +213,8 @@ struct MidiNode : public Node {
 
   struct VoiceState {
     bool is_active = false;
-    float timestamp = 0.0f;  // Last change
+    float begin_ts = 0.0f;  // Last change
+    float end_ts = 0.0f;  // Last change
   };
 
   MidiNode(const NodeParams& ctx) 
@@ -246,23 +256,24 @@ struct MidiNode : public Node {
     if (tracker->voices[voice_idx].is_active && !state[voice_idx].is_active) {
       // Note started playing
       state[voice_idx].is_active = true;
-      state[voice_idx].timestamp = time;
+      state[voice_idx].begin_ts = time;
+      state[voice_idx].end_ts = time + 100.0f;
     } else if (!tracker->voices[voice_idx].is_active && state[voice_idx].is_active) {
       // Note stopped playing
       state[voice_idx].is_active = false;
-      state[voice_idx].timestamp = time;
+      state[voice_idx].end_ts = time;
     } 
 
-    if (!state[voice_idx].is_active) {
-      out.velocity = 0.0f;
-      out.begin = state[voice_idx].timestamp - 1.0f;
-      out.end = state[voice_idx].timestamp;
-    } else {
-      out.velocity = tracker->voices[voice_idx].velocity / 128.0f;
-      GetNote(tracker->voices[voice_idx].note_idx, &out.note);
-      out.begin = state[voice_idx].timestamp;
-      out.end = state[voice_idx].timestamp + 100.0f;
-    }
+    // if (!state[voice_idx].is_active) {
+    //   out.velocity = tracker->voices[voice_idx].velocity / 128.0f;
+    //   out.begin = state[voice_idx].begin_ts;
+    //   out.end = state[voice_idx].end_ts;
+    // } else {
+    // }
+    out.velocity = tracker->voices[voice_idx].velocity / 128.0f;
+    GetNote(tracker->voices[voice_idx].note_idx, &out.note);
+    out.begin = state[voice_idx].begin_ts;
+    out.end = state[voice_idx].end_ts;
   }
   
   std::shared_ptr<MidiTracker> tracker;

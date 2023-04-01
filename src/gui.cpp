@@ -1,5 +1,7 @@
 #include "gui.h"
 #include "portable-file-dialogs.h"
+#include "misc/freetype/imgui_freetype.h"
+
 
 Gui::Gui(Params params)
     : graph(params.graph)
@@ -56,6 +58,17 @@ void Gui::InitWindow() {
   ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
   ImGui_ImplOpenGL3_Init(glsl_version);
   g_Context = ed::CreateEditor();
+
+
+  ImGuiIO& io = ImGui::GetIO(); (void)io;
+  io.Fonts->AddFontFromFileTTF("../res/NotoSans-Regular.ttf", 24.0f);
+  // Load color font
+  static ImWchar ranges[] = { 0x1, 0x1FFFF, 0 };
+  static ImFontConfig cfg;
+  cfg.OversampleH = cfg.OversampleV = 1;
+  cfg.MergeMode = true;
+  cfg.FontBuilderFlags |= ImGuiFreeTypeBuilderFlags_LoadColor;
+  io.Fonts->AddFontFromFileTTF("../res/seguiemj.ttf", 24.0f, &cfg, ranges);
 }
 
 

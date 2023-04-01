@@ -7,6 +7,7 @@
 #define X_NODE_NAMES \
        X(SINE_OSC) \
        X(SQUARE_OSC) \
+       X(SUPER_OSC) \
        X(KEYBOARD) \
        X(OUTPUT) \
        X(SLIDER) \
@@ -20,6 +21,7 @@
        X(CHANNEL_UNPACK) \
        X(PIANO) \
        X(MIDI) \
+       X(ADSR) \
        X(MIX) 
 
 enum class NodeType {
