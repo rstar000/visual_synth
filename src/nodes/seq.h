@@ -88,6 +88,7 @@ struct ChannelUnpackNode : public Node {
     AddOutput("begin", PinDataType::kFloat, 0.0f);
     AddOutput("end",   PinDataType::kFloat, 0.0f);
     AddOutput("vel",   PinDataType::kFloat, 0.0f);
+    AddOutput("time",   PinDataType::kFloat, 0.0f);
   }
   
   ~ChannelUnpackNode() {}
@@ -98,6 +99,7 @@ struct ChannelUnpackNode : public Node {
     SetOutputValue<float>(1, in.begin);
     SetOutputValue<float>(2, in.end);
     SetOutputValue<float>(3, in.velocity);
+    SetOutputValue<float>(4, std::max(0.0f, time - in.begin));
   }
 };
 
@@ -145,7 +147,7 @@ struct PianoNode : public Node {
       return;
     }
     auto& out = GetOutputValue<Channel>(0);
-    out.velocity = 1.0f;
+    out.velocity = 0.0f;
     
     bool pressed = false;
     for (int i = 0; i < kbd.keys.size(); ++i) {
@@ -189,11 +191,11 @@ struct PianoNode : public Node {
       }
       
       out.end = press_end;
-      out.velocity = 1.0f;
+      out.velocity = 0.0f;
     }
   }
   
-  void Draw() {
+  void Draw() override {
     ImGui_PianoKeyboard("##piano", ImVec2(1024, 100), &prev_note, 21, 108, TestPianoBoardFunct, &kbd, nullptr);
   }
   
@@ -276,7 +278,7 @@ struct MidiNode : public Node {
     out.end = state[voice_idx].end_ts;
   }
   
-  std::shared_ptr<MidiTracker> tracker;
+  MidiTracker* tracker;
   std::vector<VoiceState> state;
   std::vector<Octave> oct;
 };

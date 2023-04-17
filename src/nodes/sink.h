@@ -4,49 +4,51 @@
 #include "output.h"
 // #include "audio_thread.h"
 
-
 struct AudioOutputNode : public Node {
-  static inline const std::string DISPLAY_NAME = "Audio Output";
-  static inline const NodeType TYPE = NodeType::OUTPUT;
+    static inline const std::string DISPLAY_NAME = "Audio Output";
+    static inline const NodeType TYPE = NodeType::OUTPUT;
 
-  AudioOutputNode(const NodeParams& ctx) 
-      : Node(ctx)
-      , writer(ctx.writer) { 
-    type = TYPE;
-    display_name = DISPLAY_NAME;
-    
-    AddInput("signal", PinDataType::kFloat, 0.0f);
-    
-    input_label = GenLabel("voice", this);
-  }
+    AudioOutputNode(const NodeParams& ctx) : Node(ctx), writer(ctx.writer) {
+        type = TYPE;
+        display_name = DISPLAY_NAME;
 
-  ~AudioOutputNode() {}
+        AddInput("signal", PinDataType::kFloat, 0.0f);
 
-  void Process(float time) override {
-    float wave = GetInputValue<float>(0);
-
-    if (!all_voices && GetActiveVoice() != voice_idx) {
-      return;
+        input_label = GenLabel("voice", this);
+        slider_label = GenLabel("gate", this);
     }
 
-    _last = wave;
-    writer->Write(wave, GetActiveSample());
-  }
-  
-  void Draw() override {
-    float norm = (_last + 1.0f) / 2.0f;
-    ImGui::PushItemWidth(100.0f);
-    ImGui::ProgressBar(norm, ImVec2(0.0f, 0.0f));
-    ImGui::Checkbox("All voices", &all_voices);
-    ImGui::InputInt(input_label.c_str(), &voice_idx, 1, 1);
-    ImGui::PopItemWidth();
-  }
+    ~AudioOutputNode() {}
 
- private:
-  float _last = 0.0f;
-  int voice_idx = 0;
-  bool all_voices = true;
-  std::shared_ptr<SampleWriter> writer;
-  
-  std::string input_label;
+    void Process(float time) override {
+        float wave = GetInputValue<float>(0) * volume;
+
+        if (!all_voices && GetActiveVoice() != voice_idx) {
+            return;
+        }
+
+        _last = wave;
+        writer->Write(wave, GetActiveSample());
+    }
+
+    void Draw() override {
+        float norm = (_last + 1.0f) / 2.0f;
+        ImGui::PushItemWidth(100.0f);
+        ImGui::ProgressBar(norm, ImVec2(0.0f, 0.0f));
+        ImGui::SliderFloat(slider_label.c_str(), &volume, 0.0, 1.0, "%.2f",
+                           ImGuiSliderFlags_None);
+        ImGui::Checkbox("All voices", &all_voices);
+        ImGui::InputInt(input_label.c_str(), &voice_idx, 1, 1);
+        ImGui::PopItemWidth();
+    }
+
+   private:
+    float _last = 0.0f;
+    int voice_idx = 0;
+    float volume = 0.5f;
+    bool all_voices = true;
+    SampleWriter* writer;
+
+    std::string input_label;
+    std::string slider_label;
 };

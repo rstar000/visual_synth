@@ -1,39 +1,35 @@
 #pragma once
 
-#include <thread>
-#include <memory>
-#include <vector>
-#include <deque>
 #include "rtmidi/RtMidi.h"
+#include <deque>
+#include <memory>
+#include <thread>
+#include <vector>
 
 #include "note.h"
 
-
 class MidiInput {
- public:
-  MidiInput(std::shared_ptr<MidiTracker> tracker);
-  ~MidiInput();
-  
-  const auto& GetPortNames() const {
-    return port_names;
-  }
-  
-  void SetActivePort(int i);
+  public:
+    MidiInput(MidiTracker* tracker);
+    ~MidiInput();
 
- private:
-  std::shared_ptr<RtMidiIn> midiin;
-  std::vector<std::string> port_names;
-  
-  std::shared_ptr<MidiTracker> tracker;
+    const auto& GetPortNames() const { return port_names; }
+
+    void SetActivePort(int i);
+
+  private:
+    std::unique_ptr<RtMidiIn> midiin;
+    std::vector<std::string> port_names;
+
+    MidiTracker* m_tracker;
 };
 
 class KeyboardInput {
- public:
-  KeyboardInput(std::shared_ptr<MidiTracker> tracker);
+  public:
+    KeyboardInput(MidiTracker* tracker);
 
-  void ProcessKey(int key, bool down);
+    void ProcessKey(int key, bool down);
 
-  
-  std::shared_ptr<MidiTracker> tracker;
-  std::map<int, int> key_to_note;
+    MidiTracker* m_tracker;
+    std::map<int, int> key_to_note;
 };

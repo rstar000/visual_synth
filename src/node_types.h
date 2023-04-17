@@ -22,6 +22,7 @@
        X(PIANO) \
        X(MIDI) \
        X(ADSR) \
+       X(DX7EG) \
        X(MIX) 
 
 enum class NodeType {

@@ -108,7 +108,6 @@ struct SquareOscillatorNode : public Node {
 };
 
 
-
 struct SuperOscNode : public Node {
   enum class OscType {
     kSine, kSquare, kTriangle, kSaw

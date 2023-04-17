@@ -14,6 +14,7 @@
 #include "note.h"
 #include "output.h"
 #include "midi.h"
+#include "writer.h"
 
 #include "json.hpp"
 
@@ -32,13 +33,13 @@ using PinData = std::variant<
 >;
 
 class Node;
-using NodePtr = std::shared_ptr<Node>;
-
+// Nodes are owned by the graph
+using NodePtr = std::unique_ptr<Node>;
 
 // Constructor argument for all nodes
 struct NodeParams {
-  std::shared_ptr<SampleWriter> writer;
-  std::shared_ptr<MidiTracker> tracker;
+  SampleWriter* writer;
+  MidiTracker* tracker;
   int num_samples;
   int num_voices;
 };
@@ -52,7 +53,7 @@ struct Connection {
 };
 
 // Doesn't store reference to its connections
-// cause there could be multiple connected inputs.
+// because there could be multiple connected inputs.
 struct Output : public Connection {
   Output(
     const std::string& name, 
@@ -184,8 +185,8 @@ class Node {
   }
 
   void Process(int voice_idx, int sample_idx, float time) {
-    _active_voice = voice_idx;
-    _active_sample = sample_idx;
+    m_activeVoice = voice_idx;
+    m_activeSample = sample_idx;
     Process(time);
   }
   
@@ -205,35 +206,37 @@ class Node {
     int _num_voices = mono ? 1 : num_voices;
     outputs.push_back(std::make_shared<Output>(name, dtype, this, default_value, num_samples, _num_voices));
   }
+  
+  void AddParameter();
 
   int GetActiveSample() const {
-    return _active_sample;
+    return m_activeSample;
   }
 
   int GetActiveVoice() const {
-    return _active_voice;
+    return m_activeVoice;
   }
   
   template <typename T>
   const T& GetInputValue(int input_idx) {
-    return inputs[input_idx]->GetValue<T>(_active_voice, _active_sample);
+    return inputs[input_idx]->GetValue<T>(m_activeVoice, m_activeSample);
   }
 
   template <typename T>
   void SetOutputValue(int output_idx, const T& new_value) {
-    return outputs[output_idx]->SetValue<T>(_active_voice, _active_sample, new_value);
+    return outputs[output_idx]->SetValue<T>(m_activeVoice, m_activeSample, new_value);
   }
   
   template <typename T>
   T& GetOutputValue(int output_idx) {
-    return outputs[output_idx]->GetValue<T>(_active_voice, _active_sample);
+    return outputs[output_idx]->GetValue<T>(m_activeVoice, m_activeSample);
   }
 
   const int num_samples;
   const int num_voices;
   
-  int _active_sample = 0;
-  int _active_voice = 0;
+  int m_activeSample = 0;
+  int m_activeVoice = 0;
 
   std::string display_name;
   NodeType type;
