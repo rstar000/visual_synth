@@ -13,7 +13,9 @@ enum class NodeCategory {
     IO,
     UTILITY,
     ARITHMETIC,
-    DEBUG
+    DEBUG,
+    FILTER,
+    FX
 };
 
 struct BaseFactoryFunc {
@@ -51,7 +53,7 @@ struct NodeFactory {
     const auto& GetNodesByCategory() const { return nodes_by_category; }
 
     const auto& GetCategoryNames() const { return category_names; }
-    
+
     void DumpNodes(const std::string& filename) const;
 
    private:

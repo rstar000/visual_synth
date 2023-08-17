@@ -185,17 +185,20 @@ void Gui::DrawFrame() {
         // NodePtr node = attrs.ptr;
         // attrs.position = Position{100 * num_traversed, 0};
         // }
+
+        auto shape = node->GetShape();
+        ImVec2 nodeSize{shape.x * 200.0f, shape.y * 200.0f};
         ed::NodeId g_node_id = node_id;
         auto& node_pins = MapGetConstRef(pins.node_to_pins, node_id);
         ed::BeginNode(g_node_id);
         if (!wrapper.attrs.is_placed) {
             ed::SetNodePosition(
-                g_node_id, ImVec2(wrapper.attrs.pos_x, wrapper.attrs.pos_y));
+                g_node_id, ImVec2(wrapper.attrs.pos.x, wrapper.attrs.pos.y));
             wrapper.attrs.is_placed = true;
         } else if (ed::GetHoveredNode() == g_node_id) {
             auto pos = ed::GetNodePosition(g_node_id);
-            wrapper.attrs.pos_x = pos.x;
-            wrapper.attrs.pos_y = pos.y;
+            wrapper.attrs.pos.x = pos.x;
+            wrapper.attrs.pos.y = pos.y;
         }
 
         ImGui::BeginGroup();
@@ -203,31 +206,46 @@ void Gui::DrawFrame() {
         ImGui::EndGroup();
         ImGui::BeginGroup();
         ImGuiEx_BeginColumn();
-        for (int input_idx = 0; input_idx < node_pins.inputs.size();
-             ++input_idx) {
+        for (int input_idx = 0; input_idx < node_pins.inputs.size(); ++input_idx) {
             auto pin_id = node_pins.inputs[input_idx];
             auto input = node->GetInputByIndex(input_idx);
 
             ed::PinId g_pin_id = pin_id;
 
             ImVec2 p = ImGui::GetCursorScreenPos();
-            p.x -= TEXT_BASE_WIDTH;
+            // p.x += TEXT_BASE_WIDTH;
             p.y += TEXT_BASE_HEIGHT / 2;
 
-            draw_list->AddCircleFilled(p, 5, pin_color, 10);
             ed::BeginPin(g_pin_id, ed::PinKind::Input);
+            draw_list->AddCircleFilled(p, 5, pin_color, 10);
             ed::PinRect(ImVec2(p.x - 5, p.y - 5), ImVec2(p.x + 5, p.y + 5));
-            // ImGui::Bullet();
-            ImGui::Text("%s", input->name.c_str());
             ed::EndPin();
+            ImGui::NewLine();
+
+            if (ed::GetHoveredPin() == g_pin_id)
+            {
+                ed::Suspend();
+                ImGui::BeginTooltip();
+                ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+                ImGui::TextUnformatted(input->name.c_str());
+                ImGui::PopTextWrapPos();
+                ImGui::EndTooltip();
+                ed::Resume();
+            }
         }
 
         ImGuiEx_NextColumn();
 
+        // Draw node
+        ed::Suspend();
+        ImGui::BeginChild("Red", nodeSize, true, ImGuiWindowFlags_None);
         node->Draw();
+        ImGui::EndChild();
+        ed::Resume();
 
         ImGuiEx_NextColumn();
 
+        // Draw outputs
         for (int output_idx = 0; output_idx < node_pins.outputs.size();
              ++output_idx) {
             auto pin_id = node_pins.outputs[output_idx];
@@ -235,16 +253,25 @@ void Gui::DrawFrame() {
 
             ed::PinId g_pin_id = pin_id;
             ed::BeginPin(g_pin_id, ed::PinKind::Output);
-            ImGui::Text("%s %d", output->name.c_str(), pin_id);
-            ImGui::SameLine();
             ImVec2 p = ImGui::GetCursorScreenPos();
             // p.x += TEXT_BASE_WIDTH;
             p.y += TEXT_BASE_HEIGHT / 2;
             ed::PinRect(ImVec2(p.x - 5, p.y - 5), ImVec2(p.x + 5, p.y + 5));
 
             draw_list->AddCircleFilled(p, 5, pin_color, 10);
-            // ImGui::Bullet();
             ed::EndPin();
+            ImGui::NewLine();
+
+            if (ed::GetHoveredPin() == g_pin_id)
+            {
+                ed::Suspend();
+                ImGui::BeginTooltip();
+                ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+                ImGui::TextUnformatted(output->name.c_str());
+                ImGui::PopTextWrapPos();
+                ImGui::EndTooltip();
+                ed::Resume();
+            }
         }
         ImGuiEx_EndColumn();
         ImGui::EndGroup();
@@ -454,8 +481,8 @@ void Gui::ShowContextMenu() {
                             NodeWrapper wrapper;
                             wrapper.node = factory->CreateNode(type);
                             wrapper.attrs.is_placed = true;
-                            wrapper.attrs.pos_x = canvas_pos.x;
-                            wrapper.attrs.pos_y = canvas_pos.y;
+                            wrapper.attrs.pos.x = canvas_pos.x;
+                            wrapper.attrs.pos.y = canvas_pos.y;
 
                             int new_node_id =
                                 m_synth->GetGraph()->GetAccess()->AddNode(

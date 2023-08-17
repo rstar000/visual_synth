@@ -192,6 +192,7 @@ class Node {
   
   virtual void Process(float time) = 0;
   virtual void Draw() {}
+  Vector2i GetShape() const { return m_shape; }
   
   virtual void Load(const nlohmann::json& j) {};
   virtual void Save(nlohmann::json& j) const {};
@@ -207,8 +208,6 @@ class Node {
     outputs.push_back(std::make_shared<Output>(name, dtype, this, default_value, num_samples, _num_voices));
   }
   
-  void AddParameter();
-
   int GetActiveSample() const {
     return m_activeSample;
   }
@@ -244,4 +243,6 @@ class Node {
 
   std::vector<InputPtr> inputs;
   std::vector<OutputPtr> outputs;
+
+  Vector2i m_shape = {1, 1};
 };

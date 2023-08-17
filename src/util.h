@@ -15,9 +15,20 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <cstdint>
 
 #include "json.hpp"
 #include "spdlog/spdlog.h"
+
+struct Vector2f {
+    float x;
+    float y;
+};
+
+struct Vector2i {
+    int32_t x;
+    int32_t y;
+};
 
 template <class T>
 std::ostream& operator<<(std::ostream& os, const std::vector<T>& s) {

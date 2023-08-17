@@ -53,19 +53,6 @@ struct ADSRNode : public Node {
             }
         } else {
             SetOutputValue<float>(0, CalcPressedValue(in.begin, time));
-            // if (t_pressed < a_knob.value) {
-            //   // Attack
-            //   float attack_frac = t_pressed / a_knob.value;
-            //   SetOutputValue<float>(0, attack_frac);
-            // } else if (t_pressed < a_knob.value + d_knob.value) {
-            //   // Decay
-            //   float decay_frac = (t_pressed - a_knob.value) / d_knob.value;
-            //   SetOutputValue<float>(0, decay_frac * s_knob.value + (1.0f -
-            //   decay_frac));
-            // } else {
-            //   // Sustain
-            //   SetOutputValue<float>(0, s_knob.value);
-            // }
         }
     }
 
@@ -130,8 +117,8 @@ struct DX7EGNode : public Node {
 
     DX7EGNode(const NodeParams& ctx) : Node(ctx) {
         for (int i = 0; i < 4; ++i) {
-            level[i] = std::make_unique<KnobFloat>("Level " + std::to_string(i), 0.0f, kMaxValue);
-            rate[i] = std::make_unique<KnobFloat>("Rate " + std::to_string(i), 0.0f, kMaxValue);
+            m_level[i] = std::make_unique<KnobFloat>("Level " + std::to_string(i), 0.0f, kMaxValue);
+            m_rate[i] = std::make_unique<KnobFloat>("Rate " + std::to_string(i), 0.0f, kMaxValue);
         }
         type = TYPE;
         display_name = DISPLAY_NAME;
@@ -169,15 +156,15 @@ struct DX7EGNode : public Node {
     }
 
     void Draw() override {
-        for (auto& knob : level) {
-            level[i]->Draw();
+        for (int i = 0; i < 4; ++i) {
+            m_level[i]->Draw();
             if (i < 3) {
                 ImGui::SameLine();
             }
         }
 
         for (int i = 0; i < 4; ++i) {
-            rate[i]->Draw();
+            m_rate[i]->Draw();
             ImGui::SameLine();
         }
     }

@@ -18,29 +18,36 @@ void NodeFactory::RegisterCategories() {
     category_names[NodeCategory::DEBUG] = "Debug";
     category_names[NodeCategory::SEQUENCER] = "Sequencer";
     category_names[NodeCategory::IO] = "I/O";
+    category_names[NodeCategory::FILTER] = "Filter";
+    category_names[NodeCategory::FX] = "FX";
 }
 
 void NodeFactory::RegisterNodes() {
+    // IO
     RegisterNode<AudioOutputNode>(NodeCategory::IO);
     RegisterNode<PianoNode>(NodeCategory::IO);
     RegisterNode<MidiNode>(NodeCategory::IO);
 
+    // Oscillator
     RegisterNode<SineOscillatorNode>(NodeCategory::OCSILLATOR);
     RegisterNode<SquareOscillatorNode>(NodeCategory::OCSILLATOR);
     RegisterNode<SuperOscNode>(NodeCategory::OCSILLATOR);
 
+    // Utility
     RegisterNode<SliderNode>(NodeCategory::UTILITY);
     RegisterNode<ConstantNode>(NodeCategory::UTILITY);
     RegisterNode<ChannelUnpackNode>(NodeCategory::UTILITY);
     RegisterNode<ADSRNode>(NodeCategory::UTILITY);
     RegisterNode<DX7EGNode>(NodeCategory::UTILITY);
 
+    // Arithmetic
     RegisterNode<AddNode>(NodeCategory::ARITHMETIC);
     RegisterNode<MultiplyNode>(NodeCategory::ARITHMETIC);
     RegisterNode<NegateNode>(NodeCategory::ARITHMETIC);
     RegisterNode<MixNode>(NodeCategory::ARITHMETIC);
     RegisterNode<ClampNode>(NodeCategory::ARITHMETIC);
 
+    // Debug
     RegisterNode<DebugNode>(NodeCategory::DEBUG);
 
     RegisterNode<ClockNode>(NodeCategory::SEQUENCER);
@@ -51,7 +58,7 @@ void NodeFactory::DumpNodes(const std::string& filename) const {
     for (auto& [nodeType, _] : factory) {
         auto node = CreateNode(nodeType);
         std::string nodeName = names.GetName(nodeType);
-        
+
         nlohmann::json j_spec = nlohmann::json::object();
         j_spec["name"] = nodeName;
         j_spec["inputs"] = nlohmann::json::array();
@@ -76,6 +83,6 @@ void NodeFactory::DumpNodes(const std::string& filename) const {
         }
         j.push_back(j_spec);
     }
-    
+
     JsonSaveFile(filename, j);
 }

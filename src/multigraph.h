@@ -41,19 +41,19 @@ struct NodePins {
 
 // External attributes not related to node functionality
 struct NodeAttributes {
-    float pos_x = 0.0f, pos_y = 0.0f;
+    Vector2f pos;
     std::string display_name;
     bool is_placed = false;
 
     void Save(nlohmann::json& j) const {
-        JsonSetValue(j, "x", pos_x);
-        JsonSetValue(j, "y", pos_y);
+        JsonSetValue(j, "x", pos.x);
+        JsonSetValue(j, "y", pos.y);
         JsonSetValue(j, "display_name", display_name);
     }
 
     void Load(const nlohmann::json& j) {
-        JsonGetValue(j, "x", pos_x);
-        JsonGetValue(j, "y", pos_y);
+        JsonGetValue(j, "x", pos.x);
+        JsonGetValue(j, "y", pos.y);
         JsonGetValue(j, "display_name", display_name);
     }
 };
