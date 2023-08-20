@@ -5,6 +5,7 @@
 #include "nodes/osc.h"
 #include "nodes/seq.h"
 #include "nodes/sink.h"
+#include "nodes/Sequencer.hpp"
 
 template <typename T>
 void RegisterDisplayName(std::map<NodeType, std::string>& m) {
@@ -38,7 +39,7 @@ void NodeFactory::RegisterNodes() {
     RegisterNode<ConstantNode>(NodeCategory::UTILITY);
     RegisterNode<ChannelUnpackNode>(NodeCategory::UTILITY);
     RegisterNode<ADSRNode>(NodeCategory::UTILITY);
-    RegisterNode<DX7EGNode>(NodeCategory::UTILITY);
+    // RegisterNode<DX7EGNode>(NodeCategory::UTILITY);
 
     // Arithmetic
     RegisterNode<AddNode>(NodeCategory::ARITHMETIC);
@@ -51,6 +52,7 @@ void NodeFactory::RegisterNodes() {
     RegisterNode<DebugNode>(NodeCategory::DEBUG);
 
     RegisterNode<ClockNode>(NodeCategory::SEQUENCER);
+    RegisterNode<MonoSequencer>(NodeCategory::SEQUENCER);
 }
 
 void NodeFactory::DumpNodes(const std::string& filename) const {

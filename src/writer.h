@@ -16,27 +16,38 @@ inline SampleType WaveToSample(float waveform) {
     }
 }
 
+struct PlaybackContext
+{
+    float timestamp;
+    size_t sampleIdx;
+    const uint32_t numSamples;
+    const uint32_t numVoices;
+    const uint32_t sampleRate;
+};
+
 class SampleWriter {
    public:
     SampleWriter() {}
 
-    // ! Best way to get most accurate time  !
-    float GetTimestamp(int sample_idx) const {
+    float GetTimestamp(int frameSampleIdx) const {
         // TODO: remove 360. Hack to get accurate float precision
-        size_t position = cur_sample % (360 * kSampleRate);
-        return (position + sample_idx) / static_cast<float>(kSampleRate);
+        return (m_frameBeginIdx + frameSampleIdx) / static_cast<float>(kSampleRate);
     }
 
-    void SetBuffer(SampleType* ptr) { _ptr = ptr; }
+    size_t GetSample(int frameSampleIdx) const {
+        return m_frameBeginIdx + frameSampleIdx;
+    }
+
+    void SetBuffer(SampleType* ptr) { m_ptr = ptr; }
 
     void Write(float wave, int sample_idx) {
         auto sample = WaveToSample(wave);
-        _ptr[sample_idx] += sample;
+        m_ptr[sample_idx] += sample;
     }
 
-    void Flush(int num_samples) { cur_sample += num_samples; }
+    void Flush(int num_samples) { m_frameBeginIdx += num_samples; }
 
    public:
-    SampleType* _ptr;
-    size_t cur_sample = 0;
+    SampleType* m_ptr;
+    size_t m_frameBeginIdx = 0;
 };

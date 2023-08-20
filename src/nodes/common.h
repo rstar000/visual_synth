@@ -1,306 +1,360 @@
 #pragma once
 
-#include <cmath>
 #include <array>
+#include <cmath>
 #include <deque>
-#include "node.h"
-#include "node_types.h"
 
 #include "imgui.h"
-
+#include "node.h"
+#include "node_types.h"
+#include "GridUI/Widgets/Knob.hpp"
 
 struct SliderNode : public Node {
-  static inline const std::string DISPLAY_NAME = "Slider";
-  static inline const NodeType TYPE = NodeType::SLIDER;
+    static inline const std::string DISPLAY_NAME = "Slider";
+    static inline const NodeType TYPE = NodeType::SLIDER;
 
-  SliderNode(const NodeParams& ctx) : Node(ctx) {
-    type = TYPE;
-    display_name = DISPLAY_NAME;
+    SliderNode(const NodeParams& ctx) : Node(ctx) {
+        type = TYPE;
+        display_name = DISPLAY_NAME;
 
-    AddOutput("signal", PinDataType::kFloat, 0.0f);
-    slider_label = GenLabel("slider", this);
-    input_label = GenLabel("input", this);
-  }
+        AddOutput("signal", PinDataType::kFloat, 0.0f);
+    }
 
-  ~SliderNode() {}
+    ~SliderNode() {}
 
-  void Process(float time) override {
-    SetOutputValue<float>(0, signal);
-  }
-  
-  void Draw() override {
-    ImGui::PushItemWidth(100.0f);
-    ImGui::SliderFloat(slider_label.c_str(), &signal, v_min_max[0], v_min_max[1], "%.2f", ImGuiSliderFlags_None);
-    ImGui::InputFloat2(input_label.c_str(), v_min_max.data(), "%.2f", ImGuiInputTextFlags_None);
-    ImGui::PopItemWidth();
-  }
+    void Process(float time) override { SetOutputValue<float>(0, signal); }
 
-  void Save(nlohmann::json& j) const override {
-    JsonSetValue(j, "v_min", v_min_max[0]);
-    JsonSetValue(j, "v_max", v_min_max[1]);
-    JsonSetValue(j, "signal", signal);
-  }
+    void Draw() override {
+        ImGui::PushItemWidth(100.0f);
+        ImGui::SliderFloat("Slider", &signal, v_min_max[0],
+                           v_min_max[1], "%.2f", ImGuiSliderFlags_None);
+        ImGui::InputFloat2("Input", v_min_max.data(), "%.2f",
+                           ImGuiInputTextFlags_None);
+        ImGui::PopItemWidth();
+    }
 
-  void Load(const nlohmann::json& j) override {
-    JsonGetValue(j, "v_min", v_min_max[0]);
-    JsonGetValue(j, "v_max", v_min_max[1]);
-    JsonGetValue(j, "signal", signal);
-  }
+    void Save(nlohmann::json& j) const override {
+        JsonSetValue(j, "v_min", v_min_max[0]);
+        JsonSetValue(j, "v_max", v_min_max[1]);
+        JsonSetValue(j, "signal", signal);
+    }
 
- protected:
-  float signal;
-  std::array<float, 2> v_min_max;
-  
-  // These labels are a hack to have a unique id for all input fields. 
-  // Here we use pointers because at runtime no two objects can occupy one address.
-  std::string slider_label;
-  std::string input_label;
+    void Load(const nlohmann::json& j) override {
+        JsonGetValue(j, "v_min", v_min_max[0]);
+        JsonGetValue(j, "v_max", v_min_max[1]);
+        JsonGetValue(j, "signal", signal);
+    }
+
+   protected:
+    float signal;
+    std::array<float, 2> v_min_max;
 };
 
 struct ConstantNode : public Node {
-  static inline const std::string DISPLAY_NAME = "Constant";
-  static inline const NodeType TYPE = NodeType::CONSTANT;
+    static inline const std::string DISPLAY_NAME = "Constant";
+    static inline const NodeType TYPE = NodeType::CONSTANT;
 
-  ConstantNode(const NodeParams& ctx) : Node(ctx) { 
-    type = TYPE;
-    display_name = DISPLAY_NAME;
+    ConstantNode(const NodeParams& ctx) : Node(ctx) {
+        type = TYPE;
+        display_name = DISPLAY_NAME;
 
-    AddOutput("signal", PinDataType::kFloat, 0.0f);
-    input_label = GenLabel("input", this);
-  }
+        m_shape = ImVec2(1, 1);
+        m_layout =
+            std::make_unique<GridLayout>(
+                GridLayoutBuilder(m_shape * GRID_STEP)
+                    .AddColumnsEx(2, {2, 1})
+                    .Build());
 
-  ~ConstantNode() {}
+        AddOutput("signal", PinDataType::kFloat, 0.0f, 1);
+        AddParam("signal", &signal);
+    }
 
-  void Process(float time) override {
-    SetOutputValue<float>(0, signal);
-  }
-  
-  void Draw() override {
-    ImGui::PushItemWidth(100.0f);
-    ImGui::InputFloat(input_label.c_str(), &signal, 0.0f, 0.0f, "%.2f", ImGuiInputTextFlags_None);
-    ImGui::PopItemWidth();
-  }
+    ~ConstantNode() {}
 
-  void Save(nlohmann::json& j) const override {
-    JsonSetValue(j, "signal", signal);
-  }
+    void Process(float time) override { SetOutputValue<float>(0, signal); }
 
-  void Load(const nlohmann::json& j) override {
-    JsonGetValue(j, "signal", signal);
-  }
+    void Draw() override {
+        m_ctx.ui->DrawComponent(m_layout->GetComponent(0), [this](ImRect dst) {
+            float offset = ImGui::GetStyle().FramePadding.y + ImGui::GetTextLineHeight() * 0.5f;
+            ImGui::SetCursorScreenPos(ImVec2(dst.Min.x, dst.GetCenter().y - offset));
+            ImGui::PushItemWidth(dst.GetWidth());
+            ImGui::InputFloat("##value", &signal, 0.0f, 0.0f, "%.2f",
+                              ImGuiInputTextFlags_None);
+            ImGui::PopItemWidth();
+        });
+    }
 
- protected:
-  float signal;
-  std::string input_label;
+   protected:
+    float signal;
 };
 
 struct MixNode : public Node {
-  static inline const std::string DISPLAY_NAME = "Mix";
-  static inline const NodeType TYPE = NodeType::MIX;
+    static inline const std::string DISPLAY_NAME = "Mix";
+    static inline const NodeType TYPE = NodeType::MIX;
 
-  MixNode(const NodeParams& ctx) : Node(ctx) { 
-    type = TYPE;
-    display_name = DISPLAY_NAME;
+    struct ComponentIndices 
+    {
+        uint32_t inputA;
+        uint32_t inputB;
+        uint32_t inputAlpha;
+        uint32_t outputSignal;
+        uint32_t mixKnob;
+    };
 
-    AddInput("input_a", PinDataType::kFloat, 0.0f);
-    AddInput("input_b", PinDataType::kFloat, 0.0f);
-    AddInput("alpha", PinDataType::kFloat, 0.0f);
-    AddOutput("signal", PinDataType::kFloat, 0.0f);
+    MixNode(const NodeParams& ctx) : Node(ctx) {
+        type = TYPE;
+        display_name = DISPLAY_NAME;
 
-    slider_label = GenLabel("slider", this);
-  }
+        m_shape = ImVec2(2, 1);
+        m_layout = std::make_unique<GridLayout>(
+            GridLayoutBuilder(m_shape * GRID_STEP)
+                .AddColumnsEx(3, {0.5f, 1.0f, 0.5f})
+                .Push(0).AddRows(3)
+                    .GetIndex(&m_indices.inputA, 0)
+                    .GetIndex(&m_indices.inputB, 1)
+                    .GetIndex(&m_indices.inputAlpha, 2)
+                .Pop()
+                .GetIndex(&m_indices.mixKnob, 1)
+                .GetIndex(&m_indices.outputSignal, 2)
+                .Build());
 
-  ~MixNode() {}
-
-  void Process(float time) override {
-    float alpha = GetInputValue<float>(2);
-    if (!inputs[2]->IsConnected()) {
-      alpha = alpha_param;
+        AddInput("input_a", PinDataType::kFloat, 0.0f, m_indices.inputA);
+        AddInput("input_b", PinDataType::kFloat, 0.0f, m_indices.inputB);
+        AddInput("alpha", PinDataType::kFloat, 0.0f, m_indices.inputAlpha);
+        AddOutput("signal", PinDataType::kFloat, 0.0f, m_indices.outputSignal);
+        AddParam("alpha", &m_alpha);
     }
 
-    float res = GetInputValue<float>(0) * (1.0f - alpha) + 
-                GetInputValue<float>(1) * alpha;
-    SetOutputValue<float>(0, res);
-  }
-  
-  void Draw() override {
-    ImGui::PushItemWidth(100.0f);
-    ImGui::SliderFloat(slider_label.c_str(), &alpha_param, 0.0f, 1.0f, "%.2f", ImGuiSliderFlags_None);
-    ImGui::PopItemWidth();
-  }
+    ~MixNode() {}
 
-  void Save(nlohmann::json& j) const override {
-    JsonSetValue(j, "alpha", alpha_param);
-  }
+    void Process(float time) override {
+        float alpha = GetInputValue<float>(2);
+        if (!inputs[2]->IsConnected()) {
+            alpha = m_alpha;
+        }
 
-  void Load(const nlohmann::json& j) override {
-    JsonGetValue(j, "alpha", alpha_param);
-  }
+        float res = GetInputValue<float>(0) * (1.0f - alpha) +
+                    GetInputValue<float>(1) * alpha;
+        SetOutputValue<float>(0, res);
+    }
 
- protected:
-  float alpha_param;
-  float signal;
+    void Draw() override {
+        m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.mixKnob), [this](ImRect dst) {
+            DrawKnob("Alpha", dst, signal, 0.0f, 1.0f, 0.5f, "%.2f", true);
+        });
+    }
 
-  std::string slider_label;
+   protected:
+    float m_alpha;
+    float signal;
+    ComponentIndices m_indices;
 };
 
 struct AddNode : public Node {
-  static inline const std::string DISPLAY_NAME = "Add";
-  static inline const NodeType TYPE = NodeType::ADD;
+    static inline const std::string DISPLAY_NAME = "Add";
+    static inline const NodeType TYPE = NodeType::ADD;
 
-  AddNode(const NodeParams& ctx) : Node(ctx) { 
-    type = TYPE;
-    display_name = DISPLAY_NAME;
+    AddNode(const NodeParams& ctx) : Node(ctx) {
+        type = TYPE;
+        display_name = DISPLAY_NAME;
 
-    AddInput("a", PinDataType::kFloat, 0.0f);
-    AddInput("b", PinDataType::kFloat, 0.0f);
-    AddInput("c", PinDataType::kFloat, 0.0f);
-    AddOutput("signal", PinDataType::kFloat, 0.0f);
-  }
+        m_shape = ImVec2(1, 1);
+        m_layout = std::make_unique<GridLayout>(
+            GridLayoutBuilder(m_shape * GRID_STEP)
+                .AddColumns(2)
+                .Push(0).AddRows(3)
+                .Build());
 
-  ~AddNode() {}
+        AddInput("a", PinDataType::kFloat, 0.0f, 0);
+        AddInput("b", PinDataType::kFloat, 0.0f, 1);
+        AddInput("c", PinDataType::kFloat, 0.0f, 2);
+        AddOutput("signal", PinDataType::kFloat, 0.0f, 3);
+    }
 
-  void Process(float time) override {
-    float res = GetInputValue<float>(0) + 
-                GetInputValue<float>(1) +
-                GetInputValue<float>(2);
-    SetOutputValue<float>(0, res);
-  }
+    ~AddNode() {}
+
+    void Process(float time) override {
+        float res = GetInputValue<float>(0) + GetInputValue<float>(1) +
+                    GetInputValue<float>(2);
+        SetOutputValue<float>(0, res);
+    }
 };
 
 struct MultiplyNode : public Node {
-  static inline const std::string DISPLAY_NAME = "Multiply";
-  static inline const NodeType TYPE = NodeType::MULTIPLY;
+    static inline const std::string DISPLAY_NAME = "Multiply";
+    static inline const NodeType TYPE = NodeType::MULTIPLY;
 
-  MultiplyNode(const NodeParams& ctx) : Node(ctx) { 
-    type = TYPE;
-    display_name = DISPLAY_NAME;
+    MultiplyNode(const NodeParams& ctx) : Node(ctx) {
+        type = TYPE;
+        display_name = DISPLAY_NAME;
 
-    AddInput("a", PinDataType::kFloat, 0.0f);
-    AddInput("b", PinDataType::kFloat, 0.0f);
-    AddOutput("signal", PinDataType::kFloat, 0.0f);
-  }
+        m_shape = ImVec2(1, 1);
+        m_layout = std::make_unique<GridLayout>(
+            GridLayoutBuilder(m_shape * GRID_STEP)
+                .AddColumns(2)
+                .Push(0).AddRows(2)
+                .Build());
 
-  ~MultiplyNode() {}
+        AddInput("a", PinDataType::kFloat, 0.0f, 0);
+        AddInput("b", PinDataType::kFloat, 0.0f, 1);
+        AddOutput("signal", PinDataType::kFloat, 0.0f, 2);
+    }
 
-  void Process(float time) override {
-    float res = GetInputValue<float>(0) * 
-                GetInputValue<float>(1); 
-    SetOutputValue(0, res);
-  }
+    ~MultiplyNode() {}
+
+    void Process(float time) override {
+        float res = GetInputValue<float>(0) * GetInputValue<float>(1);
+        SetOutputValue(0, res);
+    }
 };
 
 struct ClampNode : public Node {
-  static inline const std::string DISPLAY_NAME = "Clamp";
-  static inline const NodeType TYPE = NodeType::CLAMP;
+    static inline const std::string DISPLAY_NAME = "Clamp";
+    static inline const NodeType TYPE = NodeType::CLAMP;
 
-  ClampNode(const NodeParams& ctx) : Node(ctx) { 
-    type = TYPE;
-    display_name = DISPLAY_NAME;
+    ClampNode(const NodeParams& ctx) : Node(ctx) {
+        type = TYPE;
+        display_name = DISPLAY_NAME;
 
-    AddInput("x", PinDataType::kFloat, 1.0f);
-    AddInput("v_min", PinDataType::kFloat, 1.0f);
-    AddInput("v_max", PinDataType::kFloat, 1.0f);
-    AddOutput("signal", PinDataType::kFloat, 0.0f);
-  }
+        m_shape = ImVec2(1, 1);
+        m_layout = std::make_unique<GridLayout>(
+            GridLayoutBuilder(m_shape * GRID_STEP)
+                .AddColumns(2)
+                .Push(0).AddRows(3)
+                .Build());
 
-  ~ClampNode() {}
+        AddInput("x", PinDataType::kFloat, 1.0f, 0);
+        AddInput("v_min", PinDataType::kFloat, 1.0f, 1);
+        AddInput("v_max", PinDataType::kFloat, 1.0f, 2);
+        AddOutput("signal", PinDataType::kFloat, 0.0f, 3);
+    }
 
-  void Process(float time) override {
-    float x = GetInputValue<float>(0);
-    float v_min = GetInputValue<float>(1);
-    float v_max = GetInputValue<float>(2);
+    ~ClampNode() {}
 
-    float res = std::clamp(x, v_min, v_max);
-    SetOutputValue<float>(0, res);
-  }
+    void Process(float time) override {
+        float x = GetInputValue<float>(0);
+        float v_min = GetInputValue<float>(1);
+        float v_max = GetInputValue<float>(2);
+
+        float res = std::clamp(x, v_min, v_max);
+        SetOutputValue<float>(0, res);
+    }
 };
 
 struct NegateNode : public Node {
-  static inline const std::string DISPLAY_NAME = "Negate";
-  static inline const NodeType TYPE = NodeType::NEGATE;
+    static inline const std::string DISPLAY_NAME = "Negate";
+    static inline const NodeType TYPE = NodeType::NEGATE;
 
-  NegateNode(const NodeParams& ctx) : Node(ctx) {
-    type = TYPE;
-    display_name = DISPLAY_NAME;
+    NegateNode(const NodeParams& ctx) : Node(ctx) {
+        type = TYPE;
+        display_name = DISPLAY_NAME;
 
-    AddInput("x", PinDataType::kFloat, 0.0f);
-    AddOutput("y", PinDataType::kFloat, 0.0f);
-  }
+        m_shape = ImVec2(1, 1);
+        m_layout = std::make_unique<GridLayout>(
+            GridLayoutBuilder(m_shape * GRID_STEP)
+                .AddColumns(2)
+                .Build());
 
-  ~NegateNode() {}
+        AddInput("x", PinDataType::kFloat, 0.0f, 0);
+        AddOutput("y", PinDataType::kFloat, 0.0f, 1);
+    }
 
-  void Process(float time) override {
-    SetOutputValue<float>(0, -GetInputValue<float>(0));
-  }
+    ~NegateNode() {}
+
+    void Process(float time) override {
+        SetOutputValue<float>(0, -GetInputValue<float>(0));
+    }
 };
 
 const int NUM_DEBUG_VALUES = 100;
 
 struct DebugNode : public Node {
-  static inline const std::string DISPLAY_NAME = "Debug";
-  static inline const NodeType TYPE = NodeType::DEBUG;
+    static inline const std::string DISPLAY_NAME = "Debug";
+    static inline const NodeType TYPE = NodeType::DEBUG;
 
-  DebugNode(const NodeParams& ctx) : Node(ctx), values(NUM_DEBUG_VALUES) { 
-    type = TYPE;
-    display_name = DISPLAY_NAME;
+    struct ComponentIndices
+    {
+        uint32_t inputX;
+        uint32_t knobVMin;
+        uint32_t knobVMax;
+        uint32_t knobResolution;
+        uint32_t display;
+    };
 
-    AddInput("x", PinDataType::kFloat, 0.0f);
-    
-    plot_label = GenLabel("plot", this);
-    min_max_label = GenLabel("mm", this);
-    slider_label = GenLabel("slider", this);
-  }
+    DebugNode(const NodeParams& ctx) : Node(ctx), values(NUM_DEBUG_VALUES) {
+        type = TYPE;
+        display_name = DISPLAY_NAME;
 
-  ~DebugNode() {}
+        m_shape = ImVec2(5, 4);
+        m_layout = std::make_unique<GridLayout>(
+            GridLayoutBuilder(m_shape * GRID_STEP)
+                .AddColumnsEx(2, {1, 4})
+                .Push(0).AddRows(4)
+                    .GetIndex(&m_indices.inputX, 0)
+                    .GetIndex(&m_indices.knobVMin, 1)
+                    .GetIndex(&m_indices.knobVMax, 2)
+                    .GetIndex(&m_indices.knobResolution, 3)
+                .Pop()
+                .GetIndex(&m_indices.display, 1)
+                .Build());
 
-  void Process(float time) override {
-    if (GetActiveVoice() != 0) {
-      return;
+        AddInput("x", PinDataType::kFloat, 0.0f, m_indices.inputX);
+
+        AddParam("v_min", &m_limits[0]);
+        AddParam("v_max", &m_limits[1]);
+        AddParam("resolution", &m_resolution);
     }
 
-    if (time < prev_time) {
-      prev_time = time;
+    ~DebugNode() {}
+
+    void Process(float time) override {
+        if (GetActiveVoice() != 0) {
+            return;
+        }
+
+        if (time < prev_time) {
+            prev_time = time;
+        }
+
+        if (time - prev_time < m_resolution / 1000.0f) {
+            return;
+        }
+
+        prev_time = time;
+        float val = GetInputValue<float>(0);
+        values[cur_idx % NUM_DEBUG_VALUES] = val;
+        ++cur_idx;
     }
 
-    if (time - prev_time < resolution / 1000.0f) {
-      return;
+    void Draw() override {
+        m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.knobVMin), [this](ImRect dst) {
+            DrawKnob("Min", dst, m_limits[0], -10.0f, 10.0f, -1.0f, "%.2f", true);
+        });
+
+        m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.knobVMax), [this](ImRect dst) {
+            DrawKnob("Max", dst, m_limits[1], -10.0f, 10.0f, 1.0f, "%.2f", true);
+        });
+
+        m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.knobResolution), [this](ImRect dst) {
+            DrawKnob("Resolution", dst, m_resolution, 0.0f, 100.0f, 1.0f, "%.2f", true);
+        });
+
+        m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.display), [this](ImRect dst) {
+            ImGui::SetCursorScreenPos(dst.Min);
+            ImGui::PlotLines("##Plot", values.data(), values.size(),
+                            cur_idx, NULL, m_limits[0], m_limits[1],
+                            dst.GetSize());
+        });
     }
 
-    prev_time = time;
-    float val = GetInputValue<float>(0);
-    values[cur_idx % NUM_DEBUG_VALUES] = val;
-    ++cur_idx;
-  }
-  
-  void Draw() override {
-    ImGui::PushItemWidth(200.0f);
-    ImGui::PlotLines(plot_label.c_str(), values.data(), values.size(), cur_idx, NULL, v_min_max[0], v_min_max[1], ImVec2(0, 80));
-    ImGui::InputFloat2(min_max_label.c_str(), v_min_max.data(), "%.2f", ImGuiInputTextFlags_None);
-    ImGui::SliderFloat(slider_label.c_str(), &resolution, 0.0f, 1000.0f, "%.2f", ImGuiSliderFlags_None);
-    ImGui::Text("%.2f", values.back());
-    ImGui::PopItemWidth();
-  }
+   private:
+    int cur_idx = 0;
+    std::vector<float> values;
 
-  void Save(nlohmann::json& j) const override {
-    JsonSetValue(j, "v_min_max", v_min_max);
-    JsonSetValue(j, "resolution", resolution);
-  }
+    std::array<float, 2> m_limits = {-1.0f, 1.0f};
+    float m_resolution = 1.0f;
 
-  void Load(const nlohmann::json& j) override {
-    JsonGetValue(j, "v_min_max", v_min_max);
-    JsonGetValue(j, "resolution", resolution);
-  }
-  
- private:
-  int cur_idx = 0;
-  std::vector<float> values;
-  std::array<float, 2> v_min_max;
-  float resolution = 1.0f;
-  
-  float prev_time = 0.0f;
-  
-  std::string plot_label;
-  std::string min_max_label;
-  std::string slider_label;
+    float prev_time = 0.0f;
+
+    ComponentIndices m_indices;
 };

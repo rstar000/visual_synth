@@ -23,6 +23,7 @@
        X(MIDI) \
        X(ADSR) \
        X(DX7EG) \
+       X(MONO_SEQUENCER) \
        X(MIX) 
 
 enum class NodeType {

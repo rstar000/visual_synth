@@ -15,17 +15,41 @@ struct ADSRNode : public Node {
 
     static constexpr float kMaxTime = 5.0f;
 
+    struct ComponentIndices
+    {
+        uint32_t channelInput;
+        uint32_t velocityOutput;
+        uint32_t attackKnob;
+        uint32_t decayKnob;
+        uint32_t sustainKnob;
+        uint32_t releaseKnob;
+    };
+
     ADSRNode(const NodeParams& ctx)
-        : Node(ctx),
-          a_knob("Attack", 0.0f, kMaxTime),
-          d_knob("Decay", 0.0f, kMaxTime),
-          s_knob("Sustain", 0.0f, 1.0f),
-          r_knob("Release", 0.0f, kMaxTime) {
+        : Node(ctx) 
+    {
         type = TYPE;
         display_name = DISPLAY_NAME;
 
-        AddInput("ch", PinDataType::kChannel, Channel{});
-        AddOutput("vel", PinDataType::kFloat, 0.0f);
+        m_shape = ImVec2(5, 1);
+        m_layout = std::make_unique<GridLayout>(
+            GridLayoutBuilder(m_shape * GRID_STEP)
+                .AddColumnsEx(6, {0.5f, 1, 1, 1, 1, 0.5f})
+                .GetIndex(&m_indices.channelInput, 0)
+                .GetIndex(&m_indices.attackKnob, 1)
+                .GetIndex(&m_indices.decayKnob, 2)
+                .GetIndex(&m_indices.sustainKnob, 3)
+                .GetIndex(&m_indices.releaseKnob, 4)
+                .GetIndex(&m_indices.velocityOutput, 5)
+                .Build());
+
+        AddInput("ch", PinDataType::kChannel, Channel{}, m_indices.channelInput);
+        AddOutput("vel", PinDataType::kFloat, 0.0f, m_indices.velocityOutput);
+
+        AddParam("attack", &m_attack);
+        AddParam("decay", &m_decay);
+        AddParam("sustain", &m_sustain);
+        AddParam("release", &m_release);
     }
 
     ~ADSRNode() {}
@@ -35,80 +59,84 @@ struct ADSRNode : public Node {
 
         float l_begin = time - in.begin;
         float l_end = time - in.end;
+        float ad_len = m_attack + m_decay;
 
-        float ad_len = a_knob.value + d_knob.value;
-
-        if (time > in.end) {
+        if (time < in.begin) {
+            SetOutputValue<float>(0, 0.0f);
+        }
+        else if (time > in.end) {
             // Release
             if (l_begin < ad_len) {
                 SetOutputValue<float>(0, CalcPressedValue(in.begin, time));
             } else {
-                float t_release =
-                    std::max(in.begin + ad_len, in.end);  // Start of release
-                float release_frac = (time - t_release) / r_knob.value;
-                // After atk + decay
+                // Start of release
+                float t_release = std::max(in.begin + ad_len, in.end);  
+                float release_frac = 0.0f;
+                if (m_release > 0.01f) {
+                    release_frac = 1.0f - std::min(((time - t_release) / m_release), 1.0f);
+                }
 
-                SetOutputValue<float>(
-                    0, std::max(0.0f, (1.0f - release_frac) * s_knob.value));
+                // After atk + decay
+                SetOutputValue<float>(0, release_frac * m_sustain);
             }
         } else {
+            // Attack - Decay - Sustain
             SetOutputValue<float>(0, CalcPressedValue(in.begin, time));
         }
     }
 
     float CalcPressedValue(float t_begin, float t_cur) {
         float t_pressed = t_cur - t_begin;
-        if (t_pressed < a_knob.value) {
+        if (t_pressed < m_attack) {
             // Attack
-            float attack_frac = t_pressed / a_knob.value;
+            float attack_frac = t_pressed / m_attack;
             return attack_frac;
-        } else if (t_pressed < a_knob.value + d_knob.value) {
+        } else if (t_pressed < m_attack + m_decay) {
             // Decay
-            float decay_frac = (t_pressed - a_knob.value) / d_knob.value;
-            return decay_frac * s_knob.value + (1.0f - decay_frac);
+            float decay_frac = (t_pressed - m_attack) / m_decay;
+            return decay_frac * m_sustain + (1.0f - decay_frac);
         } else {
             // Sustain
-            return s_knob.value;
+            return m_sustain;
         }
     }
 
     void Draw() override {
-        a_knob.Draw();
-        ImGui::SameLine();
+        m_ctx.ui->DrawComponent(
+            m_layout->GetComponent(m_indices.attackKnob), 
+            [this] (ImRect dst) {
+                DrawKnob("Attack", dst, m_attack, 0.0f, 2.0f, 0.1f, "%.2f", true);
+            });
 
-        d_knob.Draw();
-        ImGui::SameLine();
+        m_ctx.ui->DrawComponent(
+            m_layout->GetComponent(m_indices.decayKnob), 
+            [this] (ImRect dst) {
+                DrawKnob("Decay", dst, m_decay, 0.0f, 2.0f, 0.1f, "%.2f", true);
+            });
 
-        s_knob.Draw();
-        ImGui::SameLine();
+        m_ctx.ui->DrawComponent(
+            m_layout->GetComponent(m_indices.sustainKnob), 
+            [this] (ImRect dst) {
+                DrawKnob("Sustain", dst, m_sustain, 0.0f, 1.0f, 0.5f, "%.2f", true);
+            });
 
-        r_knob.Draw();
-        ImGui::SameLine();
-    }
-
-    void Save(nlohmann::json& j) const override {
-        a_knob.Save(j["attack"]);
-        d_knob.Save(j["decay"]);
-        s_knob.Save(j["sustain"]);
-        r_knob.Save(j["release"]);
-    }
-
-    void Load(const nlohmann::json& j) override {
-        if (j.find("attack") != j.end()) {
-            a_knob.Load(j["attack"]);
-            d_knob.Load(j["decay"]);
-            s_knob.Load(j["sustain"]);
-            r_knob.Load(j["release"]);
-        }
+        m_ctx.ui->DrawComponent(
+            m_layout->GetComponent(m_indices.releaseKnob), 
+            [this] (ImRect dst) {
+                DrawKnob("Release", dst, m_release, 0.0f, 2.0f, 0.1f, "%.2f", true);
+            });
     }
 
    private:
-    KnobFloat a_knob;
-    KnobFloat d_knob;
-    KnobFloat s_knob;
-    KnobFloat r_knob;
+    float m_attack = 0.1f;
+    float m_decay = 1.0f;
+    float m_sustain = 0.5f;
+    float m_release = 0.2f;
+
+    ComponentIndices m_indices;
 };
 
+/*
 struct DX7EGNode : public Node {
     static inline const std::string DISPLAY_NAME = "DX7EG";
     static inline const NodeType TYPE = NodeType::DX7EG;
@@ -177,3 +205,4 @@ struct DX7EGNode : public Node {
     std::array<std::unique_ptr<KnobFloat>, 4> m_level;
     std::array<std::unique_ptr<KnobFloat>, 4> m_rate;
 };
+*/

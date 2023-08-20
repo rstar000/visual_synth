@@ -15,9 +15,6 @@ struct KnobFloat : public Widget {
   }
   
   void Draw() {
-    ImGuiKnobs::Knob(
-      s_label.c_str(), &value, v_min, v_max, 0, "%.2f", 
-      ImGuiKnobVariant_Wiper, 0);
   }
 
   void Save(nlohmann::json& j) const override {

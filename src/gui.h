@@ -5,11 +5,11 @@
 #include <memory>
 #include <thread>
 
+#define IMGUI_DEFINE_MATH_OPERATORS
+
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
-#include "imgui_impl_sdl.h"
-#include "imgui_node_editor.h"
-#define IMGUI_DEFINE_MATH_OPERATORS
+#include "imgui_impl_sdl2.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
 #include <imgui_internal.h>
@@ -20,8 +20,6 @@
 #include "node_factory.h"
 #include "note.h"
 #include "synth.h"
-
-namespace ed = ax::NodeEditor;
 
 class Gui {
    public:
@@ -67,8 +65,7 @@ class Gui {
     KeyboardInput key_input;
     FileMenu file_menu;
 
-    ax::NodeEditor::EditorContext* g_Context = nullptr;
-    bool g_FirstFrame = true;
+    GridUI* m_ui;
 
     bool show_demo_window = true;
     bool show_another_window = false;

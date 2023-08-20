@@ -5,73 +5,89 @@
 #include "imgui.h"
 #include "node.h"
 #include "node_types.h"
-#include "ui/knob.h"
+// #include "ui/knob.h"
+
+#include "GridUI/Widgets/Knob.hpp"
+#include "Oscillators/Common.hpp"
+#include "Oscillators/Waveform.hpp"
+#include "Param.hpp"
 
 struct SineOscillatorNode : public Node {
     static inline const std::string DISPLAY_NAME = "Sine wave";
     static inline const NodeType TYPE = NodeType::SINE_OSC;
 
+    struct ComponentIndices {
+        uint32_t freqInput;
+        uint32_t ampInput;
+        uint32_t phaseInput;
+        uint32_t signalOutput;
+        uint32_t freqKnob;
+        uint32_t ampKnob;
+    };
+
     SineOscillatorNode(const NodeParams& ctx) : Node(ctx) {
         type = TYPE;
         display_name = DISPLAY_NAME;
 
-        AddInput("freq", PinDataType::kFloat, 440.0f);
-        AddInput("amp", PinDataType::kFloat, 0.5f);
-        AddInput("phase", PinDataType::kFloat, 0.0f);
-        AddOutput("signal", PinDataType::kFloat, 0.0f);
+        m_shape = ImVec2(3, 1);
+        m_layout = std::make_unique<GridLayout>(
+            GridLayoutBuilder(m_shape * GRID_STEP)
+                .AddColumnsEx(4, {1, 2, 2, 1})
+                .Push(0).AddRows(3)
+                    .GetIndex(&m_indices.freqInput, 0)
+                    .GetIndex(&m_indices.ampInput, 1)
+                    .GetIndex(&m_indices.phaseInput, 2)
+                .Pop()
+                .GetIndex(&m_indices.freqKnob, 1)
+                .GetIndex(&m_indices.ampKnob, 2)
+                .GetIndex(&m_indices.signalOutput, 3)
+                .Build());
 
-        freq_label = GenLabel("1", this, "freq");
-        amp_label = GenLabel("2", this, "amp");
+        AddInput("freq", PinDataType::kFloat, 440.0f, m_indices.freqInput);
+        AddInput("amp", PinDataType::kFloat, 0.5f, m_indices.ampInput);
+        AddInput("phase", PinDataType::kFloat, 0.0f, m_indices.phaseInput);
+        AddOutput("signal", PinDataType::kFloat, 0.0f, m_indices.signalOutput);
+
+        AddParam<float>("freq", &m_freq);
+        AddParam<float>("amp", &m_amp);
     }
 
     ~SineOscillatorNode() {}
 
     void Process(float time) override {
+        float freq = m_freq;
+        float amp = m_amp;
         if (inputs[0]->IsConnected()) {
             freq = GetInputValue<float>(0);
-        } else {
-            freq = freq_param;
-        }
+        } 
 
         if (inputs[1]->IsConnected()) {
             amp = GetInputValue<float>(1);
-        } else {
-            amp = amp_param;
         }
-
         float phase = GetInputValue<float>(2);
         float wave = amp * sin(time * 2.0f * M_PIf * freq + phase);
         SetOutputValue<float>(0, wave);
     }
 
     void Draw() override {
-        ImGui::PushItemWidth(100.0f);
-        ImGui::SliderFloat(freq_label.c_str(), &freq_param, 0.0f, 1000.0f,
-                           "%.2f", ImGuiSliderFlags_None);
-        ImGui::SliderFloat(amp_label.c_str(), &amp_param, 0.0f, 1.0f, "%.2f",
-                           ImGuiSliderFlags_None);
-        ImGui::PopItemWidth();
-    }
+        m_ctx.ui->DrawComponent(
+            m_layout->GetComponent(m_indices.freqKnob), 
+            [this] (ImRect dst) {
+                DrawKnob("Freq", dst, m_freq, 1.0f, 1000.0f, 440.0f, "%.2f", true);
+            });
 
-    void Save(nlohmann::json& j) const override {
-        JsonSetValue(j, "freq", freq_param);
-        JsonSetValue(j, "amp", amp_param);
-    }
-
-    void Load(const nlohmann::json& j) override {
-        JsonGetValue<float>(j, "freq", freq_param);
-        JsonGetValue<float>(j, "amp", amp_param);
+        m_ctx.ui->DrawComponent(
+            m_layout->GetComponent(m_indices.ampKnob), 
+            [this] (ImRect dst) {
+                DrawKnob("Amp", dst, m_amp, 0.0f, 1.0f, 0.5f, "%.2f", true);
+            });
     }
 
    private:
-    float freq;
-    float amp;
+    float m_freq = 440.0f;
+    float m_amp = 0.5f;
 
-    float freq_param = 440.0f;
-    float amp_param = 0.5f;
-
-    std::string freq_label;
-    std::string amp_label;
+    ComponentIndices m_indices;
 };
 
 struct SquareOscillatorNode : public Node {
@@ -110,38 +126,91 @@ struct SquareOscillatorNode : public Node {
 };
 
 struct SuperOscNode : public Node {
-    enum class OscType { kSine, kSquare, kTriangle, kSaw };
-    static inline const std::string DISPLAY_NAME = "Super wave";
+    enum class OscType : uint32_t { kSine = 0, kSquare, kTriangle, kSaw, kNoise };
+    static inline const std::string DISPLAY_NAME = "HyperOsc";
     static inline const NodeType TYPE = NodeType::SUPER_OSC;
+    static inline const uint32_t MAX_UNISON_COUNT = 10;
+
+    struct ComponentIndices {
+        uint32_t freqInput;
+        uint32_t ampInput;
+        uint32_t phaseInput;
+        uint32_t timeInput;
+        uint32_t signalOutput;
+
+        uint32_t octaveKnob;
+        uint32_t semitoneKnob;
+        uint32_t centsKnob;
+
+        uint32_t ampKnob;
+        uint32_t unisonWidthKnob;
+        uint32_t unisonCountKnob;
+        uint32_t waveSelectMenu;
+    };
 
     SuperOscNode(const NodeParams& ctx)
-        : Node(ctx),
-          freq_knob("freq", 0.0f, 1600.0f),
-          amp_knob("amp", 0.0f, 1.0f)
-
+        : Node(ctx)
     {
         type = TYPE;
         display_name = DISPLAY_NAME;
 
-        GenLUT(kSampleRate * 4);
+        m_shape = ImVec2(4, 2.5);
+        m_layout = std::make_unique<GridLayout>(
+            GridLayoutBuilder(m_shape * GRID_STEP)
+                .AddColumnsEx(3, {0.5, 3, 0.5})
+                .Push(0).AddRows(4)
+                    .GetIndex(&m_indices.freqInput, 0)
+                    .GetIndex(&m_indices.ampInput, 1)
+                    .GetIndex(&m_indices.phaseInput, 2)
+                    .GetIndex(&m_indices.timeInput, 3)
+                .Pop()
+                .Push(1).AddRowsEx(3, {0.5, 1, 1})
+                    .GetIndex(&m_indices.waveSelectMenu, 0)
+                    .Push(1).AddColumns(3)
+                        .GetIndex(&m_indices.octaveKnob, 0)
+                        .GetIndex(&m_indices.semitoneKnob, 1)
+                        .GetIndex(&m_indices.centsKnob, 2)
+                    .Pop()
+                    .Push(2).AddColumns(3)
+                        .GetIndex(&m_indices.ampKnob, 0)
+                        .GetIndex(&m_indices.unisonWidthKnob, 1)
+                        .GetIndex(&m_indices.unisonCountKnob, 2)
+                    .Pop()
+                .Pop()
+                .GetIndex(&m_indices.signalOutput, 2)
+                .Build());
 
-        AddInput("freq", PinDataType::kFloat, 440.0f);
-        AddInput("amp", PinDataType::kFloat, 0.5f);
-        AddInput("phase", PinDataType::kFloat, 0.0f);
-        AddInput("time", PinDataType::kFloat, 0.0f);
-        AddOutput("signal", PinDataType::kFloat, 0.0f);
+        AddInput("freq", PinDataType::kFloat, 440.0f, m_indices.freqInput);
+        AddInput("amp", PinDataType::kFloat, 0.5f, m_indices.ampInput);
+        AddInput("phase", PinDataType::kFloat, 0.0f, m_indices.phaseInput);
+        AddInput("time", PinDataType::kFloat, 0.0f, m_indices.timeInput);
+        AddOutput("signal", PinDataType::kFloat, 0.0f, m_indices.signalOutput);
+
+        AddParam("octave", &m_octave);
+        AddParam("semitone", &m_semitone);
+        AddParam("cents", &m_cents);
+        AddParam("amp", &m_amp);
+        AddParam("unisonWidth", &m_unisonWidth);
+        AddParam("unisonCount", &m_unisonCount);
+        AddParam("waveIndex", &m_waveIndex);
+
+        constexpr uint32_t wavetableNumSamples = 100;
+
+        ArrayGet(m_waves, OscType::kSine) = std::make_unique<WavetableOscillator>(wavetableNumSamples, GenWaveSine);
+        ArrayGet(m_waves, OscType::kSquare) = std::make_unique<WavetableOscillator>(wavetableNumSamples, GenWaveSquare);
+        ArrayGet(m_waves, OscType::kTriangle) = std::make_unique<WavetableOscillator>(wavetableNumSamples, GenWaveTri);
+        ArrayGet(m_waves, OscType::kSaw) = std::make_unique<WavetableOscillator>(wavetableNumSamples, GenWaveSaw);
+        ArrayGet(m_waves, OscType::kNoise) = std::make_unique<WavetableOscillator>(wavetableNumSamples, GenWaveNoise);
+
+        m_phaseAccum.resize(NumVoices() * MAX_UNISON_COUNT);
+
+        m_centsDetune.resize(100);
+        for (int i = 0; i < 100; i++) {
+            m_centsDetune.at(i) = std::pow(2.0f, i / 1200.0f);
+        }
     }
 
     ~SuperOscNode() {}
-
-    void GenLUT(int num_samples) {
-        phase_lookup.resize(num_samples);
-        for (int i = 0; i < num_samples; ++i) {
-            float ph =
-                std::sin(2.0f * M_PIf * (static_cast<float>(i) / num_samples));
-            phase_lookup[i] = ph;
-        }
-    }
 
     void Process(float time) override {
         /*
@@ -153,61 +222,146 @@ struct SuperOscNode : public Node {
           Fs is the sample rate
           N is the size of the LUT
         */
-        if (GetActiveVoice() != 0) {
-            return;
-        }
 
+        float freq = 440.0f;
+        float amp = m_amp;
+        // float phase = 0.0f;
         if (inputs[0]->IsConnected()) {
             freq = GetInputValue<float>(0);
-        } else {
-            freq = freq_knob.GetValue();
-        }
+        } 
 
         if (inputs[1]->IsConnected()) {
-            amp = GetInputValue<float>(1);
-        } else {
-            amp = amp_knob.GetValue();
+            amp = amp * GetInputValue<float>(1);
         }
 
-        int phase_delta = phase_lookup.size() * (freq / kSampleRate);
-        phase_accum = (phase_accum + phase_delta) % phase_lookup.size();
+        // if (inputs[2]->IsConnected()) {
+        //     phase = GetInputValue<float>(2);
+        // }
 
-        float wave = phase_lookup[phase_accum] * amp;
-        // float phase = GetInputValue<float>(2);
-        // float wave = amp * sin(time * 2.0 * M_PI * freq + phase);
-        SetOutputValue<float>(0, wave);
+        auto& osc = m_waves[std::clamp(m_waveIndex, 0, int(m_waves.size() - 1))];
+
+        float wavesSum = 0.0f;
+        int voiceIdx = GetActiveVoice();
+        float freqPitchShift = m_pitchShift * freq;
+        wavesSum += GetWaveValue(*osc, voiceIdx, 0, freqPitchShift, amp);
+
+        m_ctx.playback->sampleIdx;
+
+        for (int k = 1; k < m_unisonCount; ++k) {
+            float detuneAmount = m_unisonWidth * 50.0f * float(k) / m_unisonCount;
+            if (k % 2) {
+                detuneAmount *= -1.0f;
+            }
+
+            float freqDetuned = GetDetunedFreq(freqPitchShift, detuneAmount);
+            wavesSum += GetWaveValue(*osc, voiceIdx, k, freqDetuned, amp);
+        }
+
+        SetOutputValue<float>(0, wavesSum);
+    }
+
+    float GetDetunedFreq(float baseFreq, int detuneSec)
+    {
+        if (detuneSec == 0) {
+            return baseFreq;
+        }
+        else if (detuneSec > 0)
+        {
+            float detuneMod = m_centsDetune[detuneSec];
+            return baseFreq * detuneMod;
+        } else {
+            float detuneMod = m_centsDetune[-detuneSec];
+            return baseFreq / detuneMod;
+        }
+    }
+
+    float ComputePitchShiftMultiplier()
+    {
+        float octaveFrac = 1.0;
+        float semitoneFrac = 1.0;
+        if (m_octave > 0) {
+            octaveFrac = 1 << m_octave;
+        } else if (m_octave < 0) {
+            octaveFrac = 1.0f / (1 << m_octave);
+        }
+
+        if (m_semitone != 0) {
+            semitoneFrac = std::pow(kFrequencyMultiplier, m_semitone);
+        } 
+        
+        return octaveFrac * semitoneFrac;
+    }
+
+    float GetWaveValue(WavetableOscillator& osc, uint32_t voiceIdx, uint32_t unisonIdx, float freq, float amp)
+    {
+        float phaseDelta = (freq / kSampleRate) * 2.0f * M_PIf;
+        float& accum = m_phaseAccum[unisonIdx * NumVoices() + voiceIdx];
+        accum = std::fmod(accum + phaseDelta, 2.0f * M_PIf);
+        return osc.GetWave(accum) * amp;
     }
 
     void Draw() override {
-        ImGui::PushItemWidth(100.0f);
-        freq_knob.Draw();
-        ImGui::SameLine();
-        amp_knob.Draw();
-        ImGui::PopItemWidth();
-    }
+        m_ctx.ui->DrawComponent(
+            m_layout->GetComponent(m_indices.octaveKnob), 
+            [this] (ImRect dst) {
+                DrawKnobInt("Octave", dst, m_octave, -4, 4, 0, "%d", true);
+            });
 
-    void Save(nlohmann::json& j) const override {
-        freq_knob.Save(j["freq"]);
-        amp_knob.Save(j["amp"]);
-    }
+        m_ctx.ui->DrawComponent(
+            m_layout->GetComponent(m_indices.semitoneKnob), 
+            [this] (ImRect dst) {
+                DrawKnobInt("Semitone", dst, m_semitone, -12, 12, 0, "%d", true);
+            });
 
-    void Load(const nlohmann::json& j) override {
-        if (j.find("freq") != j.end()) {
-            freq_knob.Load(j["freq"]);
-        }
+        m_ctx.ui->DrawComponent(
+            m_layout->GetComponent(m_indices.centsKnob), 
+            [this] (ImRect dst) {
+                DrawKnobInt("Finetune", dst, m_cents, -100, 100, 0, "%d", true);
+            });
 
-        if (j.find("amp") != j.end()) {
-            freq_knob.Load(j["amp"]);
-        }
+        m_ctx.ui->DrawComponent(
+            m_layout->GetComponent(m_indices.ampKnob), 
+            [this] (ImRect dst) {
+                DrawKnob("Amp", dst, m_amp, 0.0f, 1.0f, 0.5f, "%.2f", true);
+            });
+
+        m_ctx.ui->DrawComponent(
+            m_layout->GetComponent(m_indices.unisonCountKnob), 
+            [this] (ImRect dst) {
+                DrawKnobInt("Unison", dst, m_unisonCount, 0, 9, 0, "%d", true);
+            });
+
+        m_ctx.ui->DrawComponent(
+            m_layout->GetComponent(m_indices.unisonWidthKnob), 
+            [this] (ImRect dst) {
+                DrawKnob("Width", dst, m_unisonWidth, 0.0f, 1.0f, 0.0f, "%.2f", true);
+            });
+
+        m_ctx.ui->DrawComponent(
+            m_layout->GetComponent(m_indices.waveSelectMenu), 
+            [this] (ImRect dst) {
+                DrawKnobInt("Wave", dst, m_waveIndex, 0, 4, 0, "%d", true);
+            });
+        m_pitchShift = ComputePitchShiftMultiplier();
     }
 
    private:
-    float freq;
-    float amp;
+    int m_octave = 0;
+    int m_semitone = 0;
+    int m_cents = 0;
+    float m_amp = 0.5f;
 
-    KnobFloat freq_knob;
-    KnobFloat amp_knob;
+    float m_unisonWidth = 0.0f;
+    int m_unisonCount = 0;
 
-    std::vector<float> phase_lookup;
-    int phase_accum;
+    int m_waveIndex = 0u;
+
+    float m_pitchShift = 1.0f;
+
+    std::vector<float> m_phaseAccum;
+    std::vector<float> m_centsDetune;
+
+    ComponentIndices m_indices;
+
+    std::array<std::unique_ptr<WavetableOscillator>, 5> m_waves;
 };

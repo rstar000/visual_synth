@@ -41,7 +41,7 @@ struct NodePins {
 
 // External attributes not related to node functionality
 struct NodeAttributes {
-    Vector2f pos;
+    ImVec2 pos;
     std::string display_name;
     bool is_placed = false;
 
@@ -170,6 +170,11 @@ struct Links {
         return pins_to_link_id.contains(pin_pair);
     }
 
+    link_id_t GetLinkId(pin_id_t pinSrc, pin_id_t pinDst) {
+        auto pin_pair = std::make_pair(pinSrc, pinDst);
+        return pins_to_link_id.at(pin_pair);
+    }
+
     std::map<link_id_t, std::pair<pin_id_t, pin_id_t>> link_id_to_pins;
     std::map<std::pair<pin_id_t, pin_id_t>, link_id_t> pins_to_link_id;
     std::map<node_id_t, std::set<link_id_t>>
@@ -233,6 +238,10 @@ class Multigraph {
         return true;
     }
 
+    bool LinkExists(pin_id_t srcPinId, pin_id_t dstPinId) {
+        return m_links.LinkExists(srcPinId, dstPinId);
+    }
+
     bool AddLink(node_id_t srcNodeId, int srcOutIdx, node_id_t dstNodeId,
                  int dstInIdx, link_id_t* newLinkId, bool commit) {
         REQ_CHECK(srcNodeId != dstNodeId);
@@ -268,6 +277,12 @@ class Multigraph {
         dst_input->Disconnect();
         m_links.RemoveLink(link_id);
         SortNodes();
+    }
+
+    void RemoveLink(pin_id_t srcPinId, pin_id_t dstPinId) {
+        ASSERT(LinkExists(srcPinId, dstPinId));
+        link_id_t linkId = m_links.GetLinkId(srcPinId, dstPinId);
+        RemoveLink(linkId);
     }
 
     Node* GetNodeById(int node_id) {

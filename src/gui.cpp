@@ -5,14 +5,14 @@
 Gui::Gui(Synth* synth)
     : m_synth(synth),
       file_menu(m_synth->GetIO()),
-      key_input(m_synth->GetTracker()) {
+      key_input(m_synth->GetTracker()),
+      m_ui(m_synth->GetGridUI()) {
     InitWindow();
 }
 
 Gui::~Gui() {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL2_Shutdown();
-    ed::DestroyEditor(g_Context);
     ImGui::DestroyContext();
 
     SDL_GL_DeleteContext(gl_context);
@@ -57,18 +57,17 @@ void Gui::InitWindow() {
     // Setup Platform/Renderer bindings
     ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);
-    g_Context = ed::CreateEditor();
 
     ImGuiIO& io = ImGui::GetIO();
     (void)io;
     io.Fonts->AddFontFromFileTTF("../res/NotoSans-Regular.ttf", 24.0f);
     // Load color font
-    static ImWchar ranges[] = {0x1, 0x1FFFF, 0};
-    static ImFontConfig cfg;
-    cfg.OversampleH = cfg.OversampleV = 1;
-    cfg.MergeMode = true;
-    cfg.FontBuilderFlags |= ImGuiFreeTypeBuilderFlags_LoadColor;
-    io.Fonts->AddFontFromFileTTF("../res/seguiemj.ttf", 24.0f, &cfg, ranges);
+    // static ImWchar ranges[] = {0x1, 0x1FFFF, 0};
+    // static ImFontConfig cfg;
+    // cfg.OversampleH = cfg.OversampleV = 1;
+    // cfg.MergeMode = true;
+    // cfg.FontBuilderFlags |= ImGuiFreeTypeBuilderFlags_LoadColor;
+    // io.Fonts->AddFontFromFileTTF("../res/seguiemj.ttf", 24.0f, &cfg, ranges);
 }
 
 void Gui::Spin() {
@@ -147,27 +146,15 @@ void Gui::DrawFrame() {
     ImGui::Separator();
     if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
 
-    // return;
-    ed::SetCurrentEditor(g_Context);
-    ImGuiWindowFlags wf = ImGuiWindowFlags_None;
+    ImGui::Begin("GridUI");
 
-    bool ed_open = true;
+    ImGui::BeginGroup();
+    float sidebarWidth = 250.0f;
+    ImVec2 winSize = ImGui::GetContentRegionAvail();
+    ImGui::BeginChild("Grid", ImVec2{winSize.x - sidebarWidth,0}, true);
+    m_ui->CanvasBegin("canvas0", [this] () {ShowContextMenu();});
 
-    if (!ImGui::Begin("editor", &ed_open, wf)) {
-        // Early out if the window is collapsed, as an optimization.
-        ImGui::End();
-        return;
-    }
-
-    // DrawToolbar();
-    // Start interaction with editor.
-    ed::Begin("My Editor", ImVec2(0.0f, 0.0f));
-
-    if (g_FirstFrame) ed::NavigateToContent(0.0f);
-
-    //
-    // 1) Commit known data to editor
-    //
+    auto& io = ImGui::GetIO();
 
     int num_traversed = 0;
     auto& nodes = graph->GetNodes();
@@ -176,215 +163,81 @@ void Gui::DrawFrame() {
 
     const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
     const float TEXT_BASE_HEIGHT = ImGui::GetTextLineHeightWithSpacing();
-    const ImU32 pin_color = ImColor(180, 180, 180, 150);
     auto draw_list = ImGui::GetWindowDrawList();
+
+    // Draw nodes
 
     for (auto& [node_id, wrapper] : nodes) {
         auto& node = wrapper.node;
         ++num_traversed;
-        // NodePtr node = attrs.ptr;
-        // attrs.position = Position{100 * num_traversed, 0};
-        // }
 
-        auto shape = node->GetShape();
-        ImVec2 nodeSize{shape.x * 200.0f, shape.y * 200.0f};
-        ed::NodeId g_node_id = node_id;
-        auto& node_pins = MapGetConstRef(pins.node_to_pins, node_id);
-        ed::BeginNode(g_node_id);
-        if (!wrapper.attrs.is_placed) {
-            ed::SetNodePosition(
-                g_node_id, ImVec2(wrapper.attrs.pos.x, wrapper.attrs.pos.y));
-            wrapper.attrs.is_placed = true;
-        } else if (ed::GetHoveredNode() == g_node_id) {
-            auto pos = ed::GetNodePosition(g_node_id);
-            wrapper.attrs.pos.x = pos.x;
-            wrapper.attrs.pos.y = pos.y;
-        }
-
-        ImGui::BeginGroup();
-        ImGui::Text("%s|%s|%d", node->GetDisplayName().c_str(), wrapper.attrs.display_name.c_str(), node_id);
-        ImGui::EndGroup();
-        ImGui::BeginGroup();
-        ImGuiEx_BeginColumn();
-        for (int input_idx = 0; input_idx < node_pins.inputs.size(); ++input_idx) {
-            auto pin_id = node_pins.inputs[input_idx];
-            auto input = node->GetInputByIndex(input_idx);
-
-            ed::PinId g_pin_id = pin_id;
-
-            ImVec2 p = ImGui::GetCursorScreenPos();
-            // p.x += TEXT_BASE_WIDTH;
-            p.y += TEXT_BASE_HEIGHT / 2;
-
-            ed::BeginPin(g_pin_id, ed::PinKind::Input);
-            draw_list->AddCircleFilled(p, 5, pin_color, 10);
-            ed::PinRect(ImVec2(p.x - 5, p.y - 5), ImVec2(p.x + 5, p.y + 5));
-            ed::EndPin();
-            ImGui::NewLine();
-
-            if (ed::GetHoveredPin() == g_pin_id)
-            {
-                ed::Suspend();
-                ImGui::BeginTooltip();
-                ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-                ImGui::TextUnformatted(input->name.c_str());
-                ImGui::PopTextWrapPos();
-                ImGui::EndTooltip();
-                ed::Resume();
-            }
-        }
-
-        ImGuiEx_NextColumn();
-
-        // Draw node
-        ed::Suspend();
-        ImGui::BeginChild("Red", nodeSize, true, ImGuiWindowFlags_None);
+        m_ui->BeginNode(node->GetDisplayName().c_str(), node_id, &wrapper.attrs.pos, node->GetShape());
         node->Draw();
-        ImGui::EndChild();
-        ed::Resume();
 
-        ImGuiEx_NextColumn();
-
-        // Draw outputs
-        for (int output_idx = 0; output_idx < node_pins.outputs.size();
-             ++output_idx) {
-            auto pin_id = node_pins.outputs[output_idx];
-            auto output = node->GetOutputByIndex(output_idx);
-
-            ed::PinId g_pin_id = pin_id;
-            ed::BeginPin(g_pin_id, ed::PinKind::Output);
-            ImVec2 p = ImGui::GetCursorScreenPos();
-            // p.x += TEXT_BASE_WIDTH;
-            p.y += TEXT_BASE_HEIGHT / 2;
-            ed::PinRect(ImVec2(p.x - 5, p.y - 5), ImVec2(p.x + 5, p.y + 5));
-
-            draw_list->AddCircleFilled(p, 5, pin_color, 10);
-            ed::EndPin();
-            ImGui::NewLine();
-
-            if (ed::GetHoveredPin() == g_pin_id)
-            {
-                ed::Suspend();
-                ImGui::BeginTooltip();
-                ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-                ImGui::TextUnformatted(output->name.c_str());
-                ImGui::PopTextWrapPos();
-                ImGui::EndTooltip();
-                ed::Resume();
-            }
+        // Draw pins
+        auto& nodePins = pins.node_to_pins.at(node_id);
+        for (uint32_t inputIdx = 0; inputIdx < nodePins.inputs.size(); ++inputIdx) {
+            pin_id_t pinId = nodePins.inputs.at(inputIdx);
+            uint32_t componentIdx = node->GetInputByIndex(inputIdx)->componentIdx;
+            const auto& component = node->GetLayout().GetComponent(componentIdx);
+            m_ui->AddPin(pinId, PinKind::kIn, component.Rect());
         }
-        ImGuiEx_EndColumn();
-        ImGui::EndGroup();
-        ed::EndNode();
+
+        for (uint32_t outputIdx = 0; outputIdx < nodePins.outputs.size(); ++outputIdx) {
+            pin_id_t pinId = nodePins.outputs.at(outputIdx);
+            uint32_t componentIdx = node->GetOutputByIndex(outputIdx)->componentIdx;
+            const auto& component = node->GetLayout().GetComponent(componentIdx);
+            m_ui->AddPin(pinId, PinKind::kOut, component.Rect());
+        }
+
+        m_ui->EndNode();
     }
 
-    // Submit Links
+    // Draw links
     for (auto& [link_id, pins] : links.link_id_to_pins) {
-        ed::LinkId g_link_id = link_id;
-        ed::Link(g_link_id, pins.first, pins.second);
+        m_ui->AddLink(pins.first, pins.second);
     }
 
-    //
-    // 2) Handle interactions
-    //
+    m_ui->HandleDelete([&graph] (uint32_t deletedNodeId) {
+        graph->GetAccess()->RemoveNode(deletedNodeId);
+    });
 
-    // Handle creation action, returns true if editor want to create new object
-    // (node or link)
-    if (ed::BeginCreate()) {
-        ed::PinId inputPinId = 0, outputPinId = 0;
-        if (ed::QueryNewLink(&inputPinId, &outputPinId)) {
-            // QueryNewLink returns true if editor want to create new link
-            // between pins.
-            //
-            // Link can be created only for two valid pins, it is up to you to
-            // validate if connection make sense. Editor is happy to make any.
-            //
-            // Link always goes from input to output. User may choose to drag
-            // link from output pin or input pin. This determine which pin ids
-            // are valid and which are not:
-            //   * input valid, output invalid - user started to drag new ling
-            //   from input pin
-            //   * input invalid, output valid - user started to drag new ling
-            //   from output pin
-            //   * input valid, output valid   - user dragged link over other
-            //   pin, can be validated
+    m_ui->HandleLinkQuery([&graph] (GridUI::LinkQuery query) {
+        if (graph->LinkExists(query.pinSrc, query.pinDst)) {
+            graph->GetAccess()->RemoveLink(query.pinSrc, query.pinDst);
+        } else if (graph->CanAddLink(query.pinSrc, query.pinDst)) {
+            link_id_t newLinkId = 0;
+            graph->GetAccess()->AddLink(query.pinSrc, query.pinDst, &newLinkId, true);
+        }
+    }); 
 
-            int new_link_id = -1;
+    m_ui->CanvasEnd();
 
-            pin_id_t input_pin = static_cast<pin_id_t>(size_t(inputPinId));
-            pin_id_t output_pin = static_cast<pin_id_t>(size_t(outputPinId));
-            bool res = graph->CanAddLink(input_pin, output_pin);
-            if (res && inputPinId &&
-                outputPinId)  // both are valid, let's accept link
+    ImGui::EndChild();
+    ImGui::SameLine();
+    ImGui::BeginGroup();
+    ImGui::BeginChild("Sidebar", ImVec2(0.0f, 0.0f), true);
+
+        if (ImGui::BeginTabBar("##Tabs", ImGuiTabBarFlags_None))
+        {
+            if (ImGui::BeginTabItem("Description"))
             {
-                // ed::AcceptNewItem() return true when user release mouse
-                // button.
-                if (ed::AcceptNewItem()) {
-                    // Since we accepted new link, lets add one to our list of
-                    // links.
-                    bool res = graph->GetAccess()->AddLink(
-                        input_pin, output_pin, &new_link_id);
-                    ed::Link(new_link_id, inputPinId, outputPinId);
-                }
-
-                // You may choose to reject connection between these nodes
-                // by calling ed::RejectNewItem(). This will allow editor to
-                // give visual feedback by changing link thickness and color.
-            } else {
-                ed::RejectNewItem();
+                ImGui::TextWrapped("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. ");
+                ImGui::EndTabItem();
             }
-        }
-    }
-    ed::EndCreate();  // Wraps up object creation action handling.
-
-    // Handle deletion action
-    if (ed::BeginDelete()) {
-        // There may be many links marked for deletion, let's loop over them.
-        ed::LinkId deletedLinkId;
-        while (ed::QueryDeletedLink(&deletedLinkId)) {
-            // If you agree that link can be deleted, accept deletion.
-            if (ed::AcceptDeletedItem()) {
-                int link_id = static_cast<int>(size_t(deletedLinkId));
-                graph->GetAccess()->RemoveLink(link_id);
+            if (ImGui::BeginTabItem("Details"))
+            {
+                ImGui::Text("ID: 0123456789");
+                ImGui::EndTabItem();
             }
-
-            // You may reject link deletion by calling:
-            // ed::RejectDeletedItem();
+            ImGui::EndTabBar();
         }
 
-        ed::NodeId deletedNodeId;
-        while (ed::QueryDeletedNode(&deletedNodeId)) {
-            if (ed::AcceptDeletedItem()) {
-                int node_id = static_cast<int>(size_t(deletedNodeId));
-                graph->GetAccess()->RemoveNode(node_id);
-            }
-        }
-    }
-    ed::EndDelete();  // Wrap up deletion action
-
-    // End of interaction with editor.
-    //
-    //
-    ed::Suspend();
-    if (ed::ShowBackgroundContextMenu()) {
-        ImGui::OpenPopup("context_menu_popup");
-    }
-    ed::Resume();
-
-    ed::Suspend();
-    ShowContextMenu();
-    ed::Resume();
-
-    ed::End();
-
-    if (g_FirstFrame) ed::NavigateToContent(0.0f);
-
-    ed::SetCurrentEditor(nullptr);
+    ImGui::EndChild();
+    ImGui::EndGroup();
+    ImGui::EndGroup();
     ImGui::End();
 
-    g_FirstFrame = false;
-
-    // ImGui::ShowMetricsWindow();
     return;
 }
 
@@ -431,9 +284,8 @@ void Gui::DrawFrame() {
 // }
 
 void Gui::ShowContextMenu() {
-    auto openPopupPosition = ImGui::GetMousePos();
-    auto canvas_pos = ed::ScreenToCanvas(openPopupPosition);
-    if (ImGui::BeginPopup("context_menu_popup")) {
+    auto openPopupPosition = ImGui::GetMousePosOnOpeningCurrentPopup();
+    auto gridPos = m_ui->ScreenPosToGridPos(openPopupPosition);
         ImGui::Text("Menu");
         ImGui::Separator();
 
@@ -470,24 +322,23 @@ void Gui::ShowContextMenu() {
             const NodeFactory* factory = m_synth->GetFactory();
             auto& nodes_by_category = factory->GetNodesByCategory();
             auto& display_names = factory->GetDisplayNames();
-            for (auto& [category, category_name] :
-                 factory->GetCategoryNames()) {
+            for (auto& [category, category_name] : factory->GetCategoryNames()) {
+                if (!nodes_by_category.contains(category)) {
+                    continue;
+                }
                 if (ImGui::BeginMenu(category_name.c_str())) {
-                    for (auto& type :
-                         MapGetConstRef(nodes_by_category, category)) {
-                        auto& display_name =
-                            MapGetConstRef(display_names, type);
+                    for (auto& type : MapGetConstRef(nodes_by_category, category)) {
+                        auto& display_name = MapGetConstRef(display_names, type);
                         if (ImGui::MenuItem(display_name.c_str())) {
                             NodeWrapper wrapper;
                             wrapper.node = factory->CreateNode(type);
                             wrapper.attrs.is_placed = true;
-                            wrapper.attrs.pos.x = canvas_pos.x;
-                            wrapper.attrs.pos.y = canvas_pos.y;
+                            wrapper.attrs.pos.x = static_cast<int>(gridPos.x / GRID_STEP);
+                            wrapper.attrs.pos.y = static_cast<int>(gridPos.y / GRID_STEP);
 
                             int new_node_id =
                                 m_synth->GetGraph()->GetAccess()->AddNode(
                                     std::move(wrapper));
-                            ed::SetNodePosition(new_node_id, canvas_pos);
                         }
                     }
                     ImGui::EndMenu();
@@ -495,7 +346,4 @@ void Gui::ShowContextMenu() {
             }
             ImGui::EndMenu();
         }
-
-        ImGui::EndPopup();
-    }
 }

@@ -40,7 +40,7 @@ AudioOutputHandler::AudioOutputHandler(Synth* synth)
 
     SPDLOG_INFO("[AudioOutputHandler] API: {}", dac.getCurrentApi());
 
-    unsigned int _buf_size = static_cast<unsigned int>(m_synth->numSamples());
+    unsigned int _buf_size = static_cast<unsigned int>(m_synth->GetPlayback()->numSamples);
 
     auto num_devices = dac.getDeviceCount();
     for (unsigned int i = 0; i < num_devices; ++i) {
