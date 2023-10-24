@@ -8,8 +8,8 @@
 #include <variant>
 #include <vector>
 
-#include "GridUI/GridUI.hpp"
 #include "GridUI/GridLayout.hpp"
+#include "GridUI/GridUI.hpp"
 #include "Param.hpp"
 #include "json.hpp"
 #include "midi.h"
@@ -36,7 +36,8 @@ class Node;
 using NodePtr = std::unique_ptr<Node>;
 
 struct Connection {
-    Connection(const std::string& name, PinDataType type, Node* parent, uint32_t componentIdx)
+    Connection(const std::string& name, PinDataType type, Node* parent,
+               uint32_t componentIdx)
         : name(name), type(type), parent(parent), componentIdx(componentIdx) {}
     std::string name;
     PinDataType type;
@@ -48,7 +49,8 @@ struct Connection {
 // because there could be multiple connected inputs.
 struct Output : public Connection {
     Output(const std::string& name, PinDataType type, Node* parent,
-           PinData default_value, int num_samples, int num_voices, uint32_t componentIdx)
+           PinData default_value, int num_samples, int num_voices,
+           uint32_t componentIdx)
         : Connection(name, type, parent, componentIdx),
           num_samples(num_samples),
           num_voices(num_voices),
@@ -125,9 +127,7 @@ using OutputPtr = std::shared_ptr<Output>;
 
 class Node {
    public:
-    Node(const NodeParams& ctx) : m_ctx{ctx} {
-        m_shape = ImVec2(2, 2);
-    }
+    Node(const NodeParams& ctx) : m_ctx{ctx} { m_shape = ImVec2(2, 2); }
 
     virtual ~Node() = default;
 
@@ -159,24 +159,22 @@ class Node {
         Process(time);
     }
 
+    virtual void Preprocess(float time) {};
     virtual void Process(float time) = 0;
     virtual void Draw() {}
 
     template <typename T>
-    void AddParam(std::string keyName, T* valuePtr)
-    {
+    void AddParam(std::string keyName, T* valuePtr) {
         m_params.push_back(std::make_shared<Param<T>>(keyName, valuePtr));
     }
 
-    virtual void Load(const nlohmann::json& j) 
-    {
+    virtual void Load(const nlohmann::json& j) {
         for (auto& param : m_params) {
             param->Load(j);
         }
     }
 
-    virtual void Save(nlohmann::json& j) const 
-    {
+    virtual void Save(nlohmann::json& j) const {
         for (auto& param : m_params) {
             param->Save(j);
         }
@@ -189,18 +187,20 @@ class Node {
 
    protected:
     void AddInput(const std::string& name, PinDataType dtype,
-                  PinData default_value, uint32_t componentIdx = 0, bool mono = false) {
+                  PinData default_value, uint32_t componentIdx = 0,
+                  bool mono = false) {
         int _num_voices = mono ? 1 : NumVoices();
-        inputs.push_back(std::make_shared<Input>(name, dtype, this,
-                                                 default_value, _num_voices, componentIdx));
+        inputs.push_back(std::make_shared<Input>(
+            name, dtype, this, default_value, _num_voices, componentIdx));
     }
 
     void AddOutput(const std::string& name, PinDataType dtype,
-                   PinData default_value, uint32_t componentIdx = 0, bool mono = false) {
+                   PinData default_value, uint32_t componentIdx = 0,
+                   bool mono = false) {
         int _num_voices = mono ? 1 : NumVoices();
-        std::cout << "Init output " << name << " , ns: " << m_ctx.playback->numSamples << " , nv: " << _num_voices << std::endl;
         outputs.push_back(std::make_shared<Output>(
-            name, dtype, this, default_value, m_ctx.playback->numSamples, _num_voices, componentIdx));
+            name, dtype, this, default_value, m_ctx.playback->numSamples,
+            _num_voices, componentIdx));
     }
 
     int GetActiveSample() const { return m_activeSample; }
@@ -213,9 +213,20 @@ class Node {
     }
 
     template <typename T>
+    const T& GetInputValueEx(int inputIdx, int voiceIdx) {
+        return inputs[inputIdx]->GetValue<T>(voiceIdx, m_activeSample);
+    }
+
+    template <typename T>
     void SetOutputValue(int output_idx, const T& new_value) {
         return outputs[output_idx]->SetValue<T>(m_activeVoice, m_activeSample,
                                                 new_value);
+    }
+
+    template <typename T>
+    void SetOutputValueEx(int outputIdx, int voiceIdx, const T& newValue) {
+        return outputs[outputIdx]->SetValue<T>(voiceIdx, m_activeSample,
+                                                newValue);
     }
 
     template <typename T>

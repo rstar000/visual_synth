@@ -16,11 +16,15 @@
        X(MULTIPLY) \
        X(CLAMP) \
        X(NEGATE) \
+       X(RANGE_SHIFT) \
        X(DEBUG) \
        X(CLOCK) \
        X(CHANNEL_UNPACK) \
        X(PIANO) \
        X(MIDI) \
+       X(MIDI_CONTROL) \
+       X(HOLD_NOTES) \
+       X(ARPEGGIATOR) \
        X(ADSR) \
        X(DX7EG) \
        X(MONO_SEQUENCER) \

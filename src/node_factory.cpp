@@ -28,6 +28,7 @@ void NodeFactory::RegisterNodes() {
     RegisterNode<AudioOutputNode>(NodeCategory::IO);
     RegisterNode<PianoNode>(NodeCategory::IO);
     RegisterNode<MidiNode>(NodeCategory::IO);
+    RegisterNode<MidiControlNode>(NodeCategory::IO);
 
     // Oscillator
     RegisterNode<SineOscillatorNode>(NodeCategory::OCSILLATOR);
@@ -47,12 +48,16 @@ void NodeFactory::RegisterNodes() {
     RegisterNode<NegateNode>(NodeCategory::ARITHMETIC);
     RegisterNode<MixNode>(NodeCategory::ARITHMETIC);
     RegisterNode<ClampNode>(NodeCategory::ARITHMETIC);
+    RegisterNode<RangeShiftNode>(NodeCategory::ARITHMETIC);
 
     // Debug
     RegisterNode<DebugNode>(NodeCategory::DEBUG);
 
+    // Sequencer
     RegisterNode<ClockNode>(NodeCategory::SEQUENCER);
     RegisterNode<MonoSequencer>(NodeCategory::SEQUENCER);
+    RegisterNode<HoldNotesNode>(NodeCategory::SEQUENCER);
+    RegisterNode<Arpeggiator>(NodeCategory::SEQUENCER);
 }
 
 void NodeFactory::DumpNodes(const std::string& filename) const {

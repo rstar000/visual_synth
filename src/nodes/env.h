@@ -6,8 +6,9 @@
 #include "imgui.h"
 #include "node.h"
 #include "node_types.h"
-#include "ui/knob.h"
 #include "util.h"
+
+#include "GridUI/Widgets/Knob.hpp"
 
 struct ADSRNode : public Node {
     static inline const std::string DISPLAY_NAME = "ADSR";
@@ -15,8 +16,7 @@ struct ADSRNode : public Node {
 
     static constexpr float kMaxTime = 5.0f;
 
-    struct ComponentIndices
-    {
+    struct ComponentIndices {
         uint32_t channelInput;
         uint32_t velocityOutput;
         uint32_t attackKnob;
@@ -25,15 +25,13 @@ struct ADSRNode : public Node {
         uint32_t releaseKnob;
     };
 
-    ADSRNode(const NodeParams& ctx)
-        : Node(ctx) 
-    {
+    ADSRNode(const NodeParams& ctx) : Node(ctx) {
         type = TYPE;
         display_name = DISPLAY_NAME;
 
         m_shape = ImVec2(5, 1);
         m_layout = std::make_unique<GridLayout>(
-            GridLayoutBuilder(m_shape * GRID_STEP)
+            GridLayoutBuilder()
                 .AddColumnsEx(6, {0.5f, 1, 1, 1, 1, 0.5f})
                 .GetIndex(&m_indices.channelInput, 0)
                 .GetIndex(&m_indices.attackKnob, 1)
@@ -43,7 +41,8 @@ struct ADSRNode : public Node {
                 .GetIndex(&m_indices.velocityOutput, 5)
                 .Build());
 
-        AddInput("ch", PinDataType::kChannel, Channel{}, m_indices.channelInput);
+        AddInput("ch", PinDataType::kChannel, Channel{},
+                 m_indices.channelInput);
         AddOutput("vel", PinDataType::kFloat, 0.0f, m_indices.velocityOutput);
 
         AddParam("attack", &m_attack);
@@ -56,32 +55,37 @@ struct ADSRNode : public Node {
 
     void Process(float time) override {
         auto in = GetInputValue<Channel>(0);
+        float res = CalcADSR(in, time);
+        SetOutputValue<float>(0, res * in.velocity);
+    }
 
-        float l_begin = time - in.begin;
-        float l_end = time - in.end;
+    float CalcADSR(const Channel& channel, const float time) {
+        float l_begin = time - channel.begin;
+        /* float l_end = time - channel.end; */
         float ad_len = m_attack + m_decay;
 
-        if (time < in.begin) {
-            SetOutputValue<float>(0, 0.0f);
-        }
-        else if (time > in.end) {
+        // Not pressed
+        if (time < channel.begin || !channel.active) {
+            return 0.0f;
+        } else if (time > channel.end) {
             // Release
             if (l_begin < ad_len) {
-                SetOutputValue<float>(0, CalcPressedValue(in.begin, time));
+                return CalcPressedValue(channel.begin, time);
             } else {
                 // Start of release
-                float t_release = std::max(in.begin + ad_len, in.end);  
+                float t_release = std::max(channel.begin + ad_len, channel.end);
                 float release_frac = 0.0f;
                 if (m_release > 0.01f) {
-                    release_frac = 1.0f - std::min(((time - t_release) / m_release), 1.0f);
+                    release_frac =
+                        1.0f - std::min(((time - t_release) / m_release), 1.0f);
                 }
 
                 // After atk + decay
-                SetOutputValue<float>(0, release_frac * m_sustain);
+                return release_frac * m_sustain;
             }
         } else {
             // Attack - Decay - Sustain
-            SetOutputValue<float>(0, CalcPressedValue(in.begin, time));
+            return CalcPressedValue(channel.begin, time);
         }
     }
 
@@ -102,29 +106,28 @@ struct ADSRNode : public Node {
     }
 
     void Draw() override {
-        m_ctx.ui->DrawComponent(
-            m_layout->GetComponent(m_indices.attackKnob), 
-            [this] (ImRect dst) {
-                DrawKnob("Attack", dst, m_attack, 0.0f, 2.0f, 0.1f, "%.2f", true);
-            });
+        m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.attackKnob),
+                                [this](ImRect dst) {
+                                    DrawKnob("Attack", dst, m_attack, 0.0f,
+                                             2.0f, 0.1f, "%.2f", true);
+                                });
 
         m_ctx.ui->DrawComponent(
-            m_layout->GetComponent(m_indices.decayKnob), 
-            [this] (ImRect dst) {
+            m_layout->GetComponent(m_indices.decayKnob), [this](ImRect dst) {
                 DrawKnob("Decay", dst, m_decay, 0.0f, 2.0f, 0.1f, "%.2f", true);
             });
 
-        m_ctx.ui->DrawComponent(
-            m_layout->GetComponent(m_indices.sustainKnob), 
-            [this] (ImRect dst) {
-                DrawKnob("Sustain", dst, m_sustain, 0.0f, 1.0f, 0.5f, "%.2f", true);
-            });
+        m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.sustainKnob),
+                                [this](ImRect dst) {
+                                    DrawKnob("Sustain", dst, m_sustain, 0.0f,
+                                             1.0f, 0.5f, "%.2f", true);
+                                });
 
-        m_ctx.ui->DrawComponent(
-            m_layout->GetComponent(m_indices.releaseKnob), 
-            [this] (ImRect dst) {
-                DrawKnob("Release", dst, m_release, 0.0f, 2.0f, 0.1f, "%.2f", true);
-            });
+        m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.releaseKnob),
+                                [this](ImRect dst) {
+                                    DrawKnob("Release", dst, m_release, 0.0f,
+                                             2.0f, 0.1f, "%.2f", true);
+                                });
     }
 
    private:
@@ -145,8 +148,9 @@ struct DX7EGNode : public Node {
 
     DX7EGNode(const NodeParams& ctx) : Node(ctx) {
         for (int i = 0; i < 4; ++i) {
-            m_level[i] = std::make_unique<KnobFloat>("Level " + std::to_string(i), 0.0f, kMaxValue);
-            m_rate[i] = std::make_unique<KnobFloat>("Rate " + std::to_string(i), 0.0f, kMaxValue);
+            m_level[i] = std::make_unique<KnobFloat>("Level " +
+std::to_string(i), 0.0f, kMaxValue); m_rate[i] =
+std::make_unique<KnobFloat>("Rate " + std::to_string(i), 0.0f, kMaxValue);
         }
         type = TYPE;
         display_name = DISPLAY_NAME;

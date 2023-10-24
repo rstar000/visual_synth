@@ -2,53 +2,106 @@
 
 #include "SDL2/SDL.h"
 
+constexpr uint8_t NOTE_ON_OFF = 144;
+constexpr uint8_t NOTE_OFF = 128;
+constexpr uint8_t CONTROL_CHANGE = 176;
+constexpr uint8_t PITCH_BEND = 176;
+
 void MidiCallback(double deltatime, std::vector<unsigned char>* message,
                 void* userData) {
     unsigned int nBytes = message->size();
-    // for ( unsigned int i=0; i<nBytes; i++ )
-    //   std::cout << "Byte " << i << " = " << (int)message->at(i) << ", ";
-    // if ( nBytes > 0 )
-    //   std::cout << "stamp = " << deltatime << std::endl;
 
     MidiTracker* tracker = static_cast<MidiTracker*>(userData);
+    unsigned char* msg = message->data();
     if (nBytes == 3) {
-        if (message->at(0) == 144) { // Note on
-            tracker->NoteOn(message->at(1), message->at(2));
+        SPDLOG_INFO("[MIDI] {} {} {}", message->at(0), message->at(1), message->at(2));
+        if (msg[0] == NOTE_ON_OFF) { // Note on
+            if (msg[2] != 0) {
+                tracker->NoteOn(msg[1], msg[2]);
+            } else {
+                tracker->NoteOff(msg[1], msg[2]);
+            }
         }
 
-        if (message->at(0) == 128) { // Note off
-            tracker->NoteOff(message->at(1), message->at(2));
+        if (msg[0] == CONTROL_CHANGE) {
+            tracker->ControlChange(msg[1], msg[2]);
+        }
+
+        if (msg[0] == PITCH_BEND) {
+            tracker->PitchBend(msg[2]);
         }
     }
 }
 
 MidiInput::MidiInput(MidiTracker* tracker) : m_tracker(tracker) {
     try {
-        midiin = std::make_unique<RtMidiIn>();
+        m_midiInput = std::make_unique<RtMidiIn>();
     } catch (RtMidiError& error) {
         error.printMessage();
         exit(EXIT_FAILURE);
     }
 
-    // Check available ports vs. specified.
-    unsigned int nPorts = midiin->getPortCount();
-    SPDLOG_INFO("[MidiInput] Num midi sources: {}", nPorts);
-
-    for (unsigned i = 0; i < nPorts; i++) {
-        std::string portName = midiin->getPortName(i);
-        SPDLOG_INFO("[MidiInput]   Port {}: {}", i, portName);
-        port_names.push_back(portName);
-    }
-
-    SetActivePort(port_names.size() - 1);
+    ScanDevices();
 }
 
-MidiInput::~MidiInput() { midiin->closePort(); }
+std::span<MidiDeviceEntry const> MidiInput::GetPortNames() const
+{
+    return std::span{m_devices};
+}
 
-void MidiInput::SetActivePort(int i) {
-    midiin->openPort(i);
-    midiin->setCallback(&MidiCallback, m_tracker);
-    midiin->ignoreTypes(false, false, false);
+uint32_t MidiInput::GetActivePort() const
+{
+    return m_activeDevice;
+}
+
+void MidiInput::ScanDevices()
+{
+    if (m_midiInput->isPortOpen()) {
+        m_midiInput->closePort();
+    }
+
+    m_devices.clear();
+    uint32_t nPorts = m_midiInput->getPortCount();
+    SPDLOG_INFO("[MidiInput] Num midi sources: {}", nPorts);
+
+    for (unsigned i = 0; i <= nPorts; i++) {
+        std::string portName = m_midiInput->getPortName(i);
+        if (portName.empty()) {
+            continue;
+        }
+        SPDLOG_INFO("[MidiInput]   Port {}: {}", i, portName);
+        m_devices.push_back(MidiDeviceEntry {
+            .deviceName = portName,
+            .portId = i
+        });
+    }
+
+    m_activeDevice = 0;
+}
+
+MidiInput::~MidiInput() 
+{ 
+    if (m_midiInput->isPortOpen()) {
+        m_midiInput->closePort(); 
+    }
+}
+
+void MidiInput::SetActiveDevice(uint32_t deviceId) 
+{
+    if (deviceId >= m_devices.size())
+    {
+        SPDLOG_ERROR("[MidiInput] Invalid device id: {}", deviceId);
+        return;
+    }
+    if (m_midiInput->isPortOpen()) {
+        m_midiInput->closePort();
+    }
+    m_midiInput->openPort(m_devices.at(deviceId).portId);
+    m_midiInput->cancelCallback();
+    m_midiInput->setCallback(&MidiCallback, m_tracker);
+    m_midiInput->ignoreTypes(false, true, true);
+    m_activeDevice = deviceId;
+    SPDLOG_INFO("[MidiInput] Active device set: {} -> {}", deviceId, m_devices.at(deviceId).deviceName);
 }
 
 KeyboardInput::KeyboardInput(MidiTracker* tracker) : m_tracker(tracker) {
@@ -64,7 +117,7 @@ KeyboardInput::KeyboardInput(MidiTracker* tracker) : m_tracker(tracker) {
 
 void KeyboardInput::ProcessKey(int key, bool down) {
     if (auto it = key_to_note.find(key); it != key_to_note.end()) {
-        int midi_key_idx = it->second + 12 * 5;
+        int midi_key_idx = it->second + 12 * 5 + 1;
         if (down) {
             m_tracker->NoteOn(midi_key_idx, 128);
         } else {

@@ -315,7 +315,7 @@ class Multigraph {
 };
 
 struct GraphIO {
-    GraphIO(Multigraph* graph, const NodeFactory* factory);
+    GraphIO(Multigraph* graph, const NodeFactory* factory, const std::string& patchDir);
 
     void Serialize(nlohmann::json& j_out) const;
     void Deserialize(const nlohmann::json& j_in) const;
@@ -324,7 +324,12 @@ struct GraphIO {
     void LoadFile(const std::string& filename) const;
     void SaveFile(const std::string& filename) const;
 
+    std::string PatchDir() const {
+        return m_patchDir;
+    }
+
    private:
     Multigraph* m_graph;
     const NodeFactory* m_factory;
+    std::string m_patchDir;
 };

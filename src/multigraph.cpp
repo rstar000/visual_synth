@@ -90,8 +90,8 @@ void Multigraph::SortNodes() {
 }
 
 // GraphIO //
-GraphIO::GraphIO(Multigraph* graph, const NodeFactory* factory)
-    : m_graph(graph), m_factory(factory) {}
+GraphIO::GraphIO(Multigraph* graph, const NodeFactory* factory, const std::string& patchDir)
+    : m_graph(graph), m_factory(factory), m_patchDir(patchDir) {}
 
 void GraphIO::Serialize(nlohmann::json& j_out) const {
     auto graphLocked = m_graph->GetAccess();
@@ -170,15 +170,16 @@ void GraphIO::SaveFile(const std::string& filename) const {
 }
 
 void GraphIO::LoadFile(const std::string& filename) const {
+    SPDLOG_INFO("[GraphIO] Load file: {}", filename);
     std::ifstream f(filename);
     auto json = nlohmann::json::object();
     f >> json;
     
     Deserialize(json);
-    SPDLOG_INFO("[GraphIO] Load file: {}", filename);
 }
 
 void GraphIO::Reset() const {
+    auto graphLocked = m_graph->GetAccess();
     std::vector<node_id_t> nodeIds;
     
     for (auto& [nodeId, nodeWrapper] : m_graph->GetNodes()) {

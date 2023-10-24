@@ -21,7 +21,7 @@ struct AudioOutputNode : public Node {
 
         m_shape = ImVec2(1, 2);
         m_layout = std::make_unique<GridLayout>(
-            GridLayoutBuilder(m_shape * GRID_STEP)
+            GridLayoutBuilder()
                 .AddColumnsEx(3, {1, 2, 1})
                 .GetIndex(&m_indices.signalInput, 0)
                 .GetIndex(&m_indices.gateFader, 1)

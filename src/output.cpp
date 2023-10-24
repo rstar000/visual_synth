@@ -58,7 +58,8 @@ AudioOutputHandler::AudioOutputHandler(Synth* synth)
     params.firstChannel = 0;
 
     RtAudio::StreamOptions options;
-    options.flags = RTAUDIO_MINIMIZE_LATENCY | RTAUDIO_NONINTERLEAVED;
+    options.flags = RTAUDIO_MINIMIZE_LATENCY | RTAUDIO_NONINTERLEAVED | RTAUDIO_SCHEDULE_REALTIME;
+    options.priority = 99;
 
     try {
         dac.openStream(

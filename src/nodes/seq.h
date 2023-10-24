@@ -9,6 +9,8 @@
 #include "node_types.h"
 #include "util.h"
 
+#include "GridUI/Widgets/Knob.hpp"
+
 // Will enable the note every tick in the measure for a specified amount of time
 struct ClockNode : public Node {
     static inline const std::string DISPLAY_NAME = "Clock";
@@ -85,14 +87,14 @@ struct ChannelUnpackNode : public Node {
     static inline const std::string DISPLAY_NAME = "Channel unpack";
     static inline const NodeType TYPE = NodeType::CHANNEL_UNPACK;
 
-    struct ComponentIndices
-    {
+    struct ComponentIndices {
         uint32_t channelInput;
         uint32_t freqOutput;
         uint32_t beginOutput;
         uint32_t endOutput;
         uint32_t velOutput;
         uint32_t timeOutput;
+        uint32_t activeOutput;
     };
 
     ChannelUnpackNode(const NodeParams& ctx) : Node(ctx) {
@@ -101,23 +103,30 @@ struct ChannelUnpackNode : public Node {
 
         m_shape = ImVec2(2, 2);
         m_layout = std::make_unique<GridLayout>(
-            GridLayoutBuilder(m_shape * GRID_STEP)
-            .AddColumns(2)
-                .Push(0).AddRows(5).GetIndex(&m_indices.channelInput, 2).Pop()
-                .Push(1).AddRows(5)
-                    .GetIndex(&m_indices.freqOutput, 0)
-                    .GetIndex(&m_indices.beginOutput, 1)
-                    .GetIndex(&m_indices.endOutput, 2)
-                    .GetIndex(&m_indices.velOutput, 3)
-                    .GetIndex(&m_indices.timeOutput, 4)
-            .Build());
+            GridLayoutBuilder()
+                .AddColumns(2)
+                .Push(0)
+                .AddRows(5)
+                .GetIndex(&m_indices.channelInput, 2)
+                .Pop()
+                .Push(1)
+                .AddRows(6)
+                .GetIndex(&m_indices.freqOutput, 0)
+                .GetIndex(&m_indices.beginOutput, 1)
+                .GetIndex(&m_indices.endOutput, 2)
+                .GetIndex(&m_indices.velOutput, 3)
+                .GetIndex(&m_indices.timeOutput, 4)
+                .GetIndex(&m_indices.activeOutput, 5)
+                .Build());
 
-        AddInput("ch", PinDataType::kChannel, Channel{}, m_indices.channelInput);
+        AddInput("ch", PinDataType::kChannel, Channel{},
+                 m_indices.channelInput);
         AddOutput("freq", PinDataType::kFloat, 0.0f, m_indices.freqOutput);
         AddOutput("begin", PinDataType::kFloat, 0.0f, m_indices.beginOutput);
         AddOutput("end", PinDataType::kFloat, 0.0f, m_indices.endOutput);
         AddOutput("vel", PinDataType::kFloat, 0.0f, m_indices.velOutput);
         AddOutput("time", PinDataType::kFloat, 0.0f, m_indices.timeOutput);
+        AddOutput("active", PinDataType::kFloat, 0.0f, m_indices.activeOutput);
     }
 
     ~ChannelUnpackNode() {}
@@ -129,9 +138,10 @@ struct ChannelUnpackNode : public Node {
         SetOutputValue<float>(2, in.end);
         SetOutputValue<float>(3, in.velocity);
         SetOutputValue<float>(4, std::max(0.0f, time - in.begin));
+        SetOutputValue<float>(5, in.active ? 1.0f : 0.0f);
     }
 
-private:
+   private:
     ComponentIndices m_indices;
 };
 
@@ -143,15 +153,15 @@ inline bool TestPianoBoardFunct(void* UserData, int Msg, int Key, float Vel) {
     KeyboardData* kbd = static_cast<KeyboardData*>(UserData);
     if (Key <= 0 || Key >= 128) return false;  // midi max keys
     if (Msg == NoteGetStatus) {
-        return kbd->keys[Key + 1];
+        return kbd->keys[Key];
     }
 
     if (Msg == NoteOn) {
-        kbd->keys[Key + 1] = 1;
+        kbd->keys[Key] = 1;
     }
 
     if (Msg == NoteOff) {
-        kbd->keys[Key + 1] = 0;
+        kbd->keys[Key] = 0;
     }
     return true;
 }
@@ -165,9 +175,10 @@ struct PianoNode : public Node {
         display_name = DISPLAY_NAME;
 
         m_shape = ImVec2(10, 2);
-        m_layout = std::make_unique<GridLayout>(
-            GridLayoutBuilder(m_shape * GRID_STEP)
-            .AddColumnsEx(2, {9.5f, 0.5f}).Build());
+        m_layout =
+            std::make_unique<GridLayout>(GridLayoutBuilder()
+                                             .AddColumnsEx(2, {9.5f, 0.5f})
+                                             .Build());
 
         AddOutput("ch", PinDataType::kChannel, Channel{}, 1u);
         std::fill(kbd.keys.begin(), kbd.keys.end(), 0);
@@ -193,7 +204,7 @@ struct PianoNode : public Node {
                 }
 
                 int note_idx =
-                    i - kMidiOffset;  // We have some invisible keys...
+                    i - kMidiOffset + 3;  // We have some invisible keys...
                 if (note_idx < 0) {
                     break;
                 }
@@ -267,9 +278,8 @@ struct MidiNode : public Node {
 
         m_shape = ImVec2(1, 1);
         m_layout = std::make_unique<GridLayout>(
-            GridLayoutBuilder(m_shape * GRID_STEP)
-                .AddColumns(1)
-                .Build());
+            GridLayoutBuilder()
+                .AddColumns(1).Build());
 
         AddOutput("ch", PinDataType::kChannel, Channel{}, 0u);
         for (int i = 0; i < 7; ++i) {
@@ -322,9 +332,66 @@ struct MidiNode : public Node {
         GetNote(tracker->voices[voice_idx].note_idx, &out.note);
         out.begin = state[voice_idx].begin_ts;
         out.end = state[voice_idx].end_ts;
+        out.active = state[voice_idx].is_active;
     }
 
     MidiTracker* tracker;
     std::vector<VoiceState> state;
     std::vector<Octave> oct;
 };
+
+struct MidiControlNode : public Node {
+    static inline const std::string DISPLAY_NAME = "Midi control";
+    static inline const NodeType TYPE = NodeType::MIDI_CONTROL;
+
+    struct ComponentIndices {
+        uint32_t controlIndex;
+        uint32_t controlKnob;
+        uint32_t valueOutput;
+    };
+
+    MidiControlNode(const NodeParams& ctx) : Node(ctx), m_tracker(ctx.tracker) {
+        type = TYPE;
+        display_name = DISPLAY_NAME;
+
+        m_shape = ImVec2(3, 1);
+        m_layout = std::make_unique<GridLayout>(
+            GridLayoutBuilder()
+                .AddColumns(3)
+                .GetIndex(&m_indices.controlIndex, 0)
+                .GetIndex(&m_indices.controlKnob, 1)
+                .GetIndex(&m_indices.valueOutput, 2)
+                .Build());
+
+        AddOutput("value", PinDataType::kFloat, 0.0f, m_indices.valueOutput);
+    }
+
+    ~MidiControlNode() {}
+
+    void Process(float time) override {
+        auto& out = GetOutputValue<float>(0);
+
+        uint8_t& midiValue = m_tracker->controls[m_controlIdx];
+        m_value = midiValue;
+        out = static_cast<float>(midiValue) / 128.0f;
+    }
+
+    void Draw() override {
+        m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.controlIndex),
+                                [this](ImRect dst) {
+                                    DrawKnobInt("Control ID", dst, m_controlIdx,
+                                                0, 255, 1, "%d", true);
+                                });
+
+        m_ctx.ui->DrawComponent(
+            m_layout->GetComponent(m_indices.controlKnob), [this](ImRect dst) {
+                DrawKnobInt("Value", dst, m_value, 0, 255, 1, "%d", true);
+            });
+    }
+
+    MidiTracker* m_tracker;
+    ComponentIndices m_indices;
+    int m_controlIdx;
+    int m_value;
+};
+

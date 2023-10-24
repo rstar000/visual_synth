@@ -6,27 +6,33 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include <iostream>
+#include <cstdint>
 #include <fstream>
+#include <iostream>
+#include <limits>
 #include <map>
+#include <memory>
 #include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <cstdint>
-#include <memory>
 
 #include "json.hpp"
 #include "spdlog/spdlog.h"
 
-template<typename ... Ts>                                                 
-struct Overload : Ts ... { 
-    using Ts::operator() ...;
+#define IMGUI_DEFINE_MATH_OPERATORS
+#include "imgui.h"
+#include "imgui_internal.h"
+
+template <typename... Ts>
+struct Overload : Ts... {
+    using Ts::operator()...;
 };
 
-template<class... Ts> Overload(Ts...) -> Overload<Ts...>;
+template <class... Ts>
+Overload(Ts...) -> Overload<Ts...>;
 
 struct Vector2f {
     float x;
@@ -105,11 +111,13 @@ void AssertEqual(const T& t, const U& u, const std::string& hint = {}) {
     }
 }
 
-inline void Assert(bool b, const std::string& hint) { AssertEqual(b, true, hint); }
+inline void Assert(bool b, const std::string& hint) {
+    AssertEqual(b, true, hint);
+}
 
 #define ASSERT_EQUAL(x, y)                                                  \
     {                                                                       \
-        std::ostringstream __assert_equal_private_os;                            \
+        std::ostringstream __assert_equal_private_os;                       \
         __assert_equal_private_os << #x << " != " << #y << ", " << __FILE__ \
                                   << ":" << __LINE__;                       \
         AssertEqual(x, y, __assert_equal_private_os.str());                 \
@@ -118,7 +126,7 @@ inline void Assert(bool b, const std::string& hint) { AssertEqual(b, true, hint)
 #define ASSERT(x)                                                     \
     {                                                                 \
         if (!bool(x)) {                                               \
-            std::ostringstream os;                                         \
+            std::ostringstream os;                                    \
             os << #x << " is false, " << __FILE__ << ":" << __LINE__; \
             Assert(x, os.str());                                      \
         }                                                             \
@@ -201,20 +209,20 @@ inline void JsonSetValue(nlohmann::json& j, const std::string& name, T value) {
 }
 
 // Check requirement, return false on failure
-#define REQ_CHECK_EX(x, ex)               \
-    {                                     \
-        if (!(x)) {                       \
-            SPDLOG_ERROR(ex);             \
-            return false;                 \
-        }                                 \
+#define REQ_CHECK_EX(x, ex)   \
+    {                         \
+        if (!(x)) {           \
+            SPDLOG_ERROR(ex); \
+            return false;     \
+        }                     \
     }
 
-#define REQ_CHECK(x)                                    \
-    {                                                   \
-        if (!(x)) {                                     \
-            SPDLOG_ERROR("Req check fail");             \
-            return false;                               \
-        }                                               \
+#define REQ_CHECK(x)                        \
+    {                                       \
+        if (!(x)) {                         \
+            SPDLOG_ERROR("Req check fail"); \
+            return false;                   \
+        }                                   \
     }
 
 inline std::string GenLabel(std::string unique, const void* obj,
@@ -243,7 +251,8 @@ inline void JsonLoadFile(const std::string& filename, nlohmann::json& json) {
     f >> json;
 }
 
-inline void JsonSaveFile(const std::string& filename, const nlohmann::json& json) {
+inline void JsonSaveFile(const std::string& filename,
+                         const nlohmann::json& json) {
     std::ofstream f(filename);
     f << std::setw(4) << json;
 }
@@ -258,21 +267,35 @@ inline void JsonSaveFile(const std::string& filename, const nlohmann::json& json
 //       });
 // }
 
-
-template<typename ... Args>
-std::string string_format( const std::string& format, Args ... args )
-{
-    int size_s = std::snprintf( nullptr, 0, format.c_str(), args ... ) + 1; // Extra space for '\0'
-    if( size_s <= 0 ){ throw std::runtime_error( "Error during formatting." ); }
-    auto size = static_cast<size_t>( size_s );
-    auto buf = std::make_unique<char[]>( size );
-    std::snprintf( buf.get(), size, format.c_str(), args ... );
-    return std::string( buf.get(), buf.get() + size - 1 ); // We don't want the '\0' inside
+template <typename... Args>
+std::string string_format(const std::string& format, Args... args) {
+    int size_s = std::snprintf(nullptr, 0, format.c_str(), args...) +
+                 1;  // Extra space for '\0'
+    if (size_s <= 0) {
+        throw std::runtime_error("Error during formatting.");
+    }
+    auto size = static_cast<size_t>(size_s);
+    auto buf = std::make_unique<char[]>(size);
+    std::snprintf(buf.get(), size, format.c_str(), args...);
+    return std::string(buf.get(),
+                       buf.get() + size - 1);  // We don't want the '\0' inside
 }
 
-
-template<typename EnumT, typename ArrayT>
-ArrayT::value_type& ArrayGet(ArrayT& arr, EnumT idx)
-{
+template <typename EnumT, typename ArrayT>
+inline ArrayT::value_type& ArrayGet(ArrayT& arr, EnumT idx) {
     return arr.at(static_cast<size_t>(idx));
+}
+
+template <typename T>
+inline T SafeAdd(T a, T b) {
+    int32_t target = static_cast<int32_t>(a) + b;
+    if (target > std::numeric_limits<T>::max()) {
+        return std::numeric_limits<T>::max();
+    }
+
+    if (target < std::numeric_limits<T>::min()) {
+        return std::numeric_limits<T>::min();
+    }
+
+    return target;
 }

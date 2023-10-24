@@ -2,10 +2,12 @@
 // #include "portable-file-dialogs.h"
 #include "misc/freetype/imgui_freetype.h"
 
-Gui::Gui(Synth* synth)
-    : m_synth(synth),
-      file_menu(m_synth->GetIO()),
+Gui::Gui(Synth& synth, MidiInput& midi)
+    : m_synth(&synth),
+      m_midi(&midi),
       key_input(m_synth->GetTracker()),
+      file_menu(m_synth->GetIO()),
+      m_patchBrowser(m_synth->GetIO()),
       m_ui(m_synth->GetGridUI()) {
     InitWindow();
 }
@@ -41,7 +43,7 @@ void Gui::InitWindow() {
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_WindowFlags window_flags =
         (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
-    window = SDL_CreateWindow("Dear ImGui SDL2+OpenGL3 example",
+    window = SDL_CreateWindow("VS2 Standalone",
                               SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                               1280, 720, window_flags);
     gl_context = SDL_GL_CreateContext(window);
@@ -142,17 +144,94 @@ void ImGuiEx_NextColumn() {
 void ImGuiEx_EndColumn() { ImGui::EndGroup(); }
 
 void Gui::DrawFrame() {
-    Multigraph* graph = m_synth->GetGraph();
     ImGui::Separator();
     if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
 
-    ImGui::Begin("GridUI");
+    ImGuiWindowFlags windowFlags = (
+        ImGuiWindowFlags_MenuBar |
+        ImGuiWindowFlags_NoScrollbar);
+
+    static bool windowOpen = true;
+    ImGui::Begin("GridUI", &windowOpen, windowFlags);
+
+        DrawMainMenu();
 
     ImGui::BeginGroup();
     float sidebarWidth = 250.0f;
     ImVec2 winSize = ImGui::GetContentRegionAvail();
     ImGui::BeginChild("Grid", ImVec2{winSize.x - sidebarWidth,0}, true);
+
+        DrawGraph();
+
+    ImGui::EndChild();
+    ImGui::SameLine();
+    ImGui::BeginGroup();
+    ImGui::BeginChild("Sidebar", ImVec2(0.0f, 0.0f), true);
+
+        DrawSidebar();
+
+    ImGui::EndChild();
+    ImGui::EndGroup();
+    ImGui::EndGroup();
+    ImGui::End();
+
+    if (m_showMidiSettings) {
+        ImGui::Begin("MIDI settings");
+        DrawMidiSettings();
+        ImGui::End();
+    }
+
+    return;
+}
+
+void Gui::DrawMainMenu()
+{
+    if (ImGui::BeginMenuBar())
+    {
+        if (ImGui::BeginMenu("Menu"))
+        {
+            ImGui::MenuItem("MIDI settings", NULL, &m_showMidiSettings);
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
+    }
+}
+
+void Gui::DrawMidiSettings()
+{
+    if (ImGui::Button("Reload")) {
+        m_midi->ScanDevices();
+    }
+
+    auto devices = m_midi->GetPortNames();
+    if (ImGui::BeginListBox("MIDI devices", ImVec2(-FLT_MIN, 5 * ImGui::GetTextLineHeightWithSpacing()))) {
+        for (uint32_t n = 0; n < devices.size(); n++) {
+            const bool is_selected = (m_midi->GetActivePort() == n);
+            if (ImGui::Selectable(devices[n].deviceName.c_str(), is_selected, ImGuiSelectableFlags_AllowDoubleClick)) {
+                if (ImGui::IsMouseDoubleClicked(0)) {
+                    m_midi->SetActiveDevice(n);
+                }
+            }
+
+            // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+            if (is_selected) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndListBox();
+    }
+
+    if (ImGui::Button("OK")) {
+        m_showMidiSettings = false;
+    }
+    
+    
+}
+
+void Gui::DrawGraph()
+{
     m_ui->CanvasBegin("canvas0", [this] () {ShowContextMenu();});
+    Multigraph* graph = m_synth->GetGraph();
 
     auto& io = ImGui::GetIO();
 
@@ -212,33 +291,24 @@ void Gui::DrawFrame() {
     }); 
 
     m_ui->CanvasEnd();
+}
 
-    ImGui::EndChild();
-    ImGui::SameLine();
-    ImGui::BeginGroup();
-    ImGui::BeginChild("Sidebar", ImVec2(0.0f, 0.0f), true);
-
-        if (ImGui::BeginTabBar("##Tabs", ImGuiTabBarFlags_None))
+void Gui::DrawSidebar()
+{
+    if (ImGui::BeginTabBar("##Tabs", ImGuiTabBarFlags_None))
+    {
+        if (ImGui::BeginTabItem("Patch Browser"))
         {
-            if (ImGui::BeginTabItem("Description"))
-            {
-                ImGui::TextWrapped("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. ");
-                ImGui::EndTabItem();
-            }
-            if (ImGui::BeginTabItem("Details"))
-            {
-                ImGui::Text("ID: 0123456789");
-                ImGui::EndTabItem();
-            }
-            ImGui::EndTabBar();
+            m_patchBrowser.Draw();
+            ImGui::EndTabItem();
         }
-
-    ImGui::EndChild();
-    ImGui::EndGroup();
-    ImGui::EndGroup();
-    ImGui::End();
-
-    return;
+        if (ImGui::BeginTabItem("Details"))
+        {
+            ImGui::Text("ID: 0123456789");
+            ImGui::EndTabItem();
+        }
+        ImGui::EndTabBar();
+    }
 }
 
 // void Gui::DrawToolbar() {

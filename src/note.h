@@ -9,7 +9,7 @@
 #include "util.h"
 
 const float kFrequencyMultiplier = std::pow(2.0f, 1.0f / 12.0f);
-const float kA440 = 440.0f;
+const float kA440 = 440.0f;  // C4
 const int kHalfStepsPerOctave = 12;
 const int kMidiOffset = 2 * kHalfStepsPerOctave;
 
@@ -34,17 +34,17 @@ struct Channel {
     float begin = 0.0f;  // Exact time when the note began playing.
     float end = 0.0f;
     float velocity = 0.0f;  
+    bool active = false;
 
     bool IsPlaying() const { return begin > end; }
 };
 
-enum class Tone { C, Db, D, Eb, E, F, Gb, G, Ab, A, Bb, B };
+enum class Tone { C = 0, Db, D, Eb, E, F, Gb, G, Ab, A, Bb, B };
 
 struct Octave {
+    static constexpr size_t NUM_NOTES = 12;
     Octave(int idx = 0) {
-        std::vector<std::string> names = {"C",  "Db", "D",  "Eb", "E",  "F",
-                                          "Gb", "G",  "Ab", "A",  "Bb", "B"};
-
+        auto names = GetNames();
         for (int step = 0; step < kHalfStepsPerOctave; ++step) {
             // Base is A, start octave at C.
             notes_.emplace_back(idx, step - 10);
@@ -62,15 +62,57 @@ struct Octave {
         return notes_[static_cast<size_t>(tone)];
     }
 
+    const Note& Get(uint32_t toneIdx) const {
+        return notes_.at(toneIdx);
+    }
+
+    static std::vector<std::string> GetNames() {
+        return std::vector<std::string> {"C",  "Db", "D",  "Eb", "E",  "F",
+                                          "Gb", "G",  "Ab", "A",  "Bb", "B"};
+
+    }
+
    private:
     std::vector<Note> notes_;
     std::map<std::string, int> codes_;
 };
 
+struct NoteLookup {
+    struct NoteDesc {
+        std::string name;
+        Note note;
+    };
+    static constexpr size_t NUM_OCTAVES = 6;
+
+    NoteLookup() {
+        auto names = Octave::GetNames();
+        for (int octaveIdx = 0; octaveIdx < NUM_OCTAVES; ++octaveIdx) {
+            Octave oct(octaveIdx - 4);
+            for (size_t noteIdx = 0; noteIdx < Octave::NUM_NOTES; ++noteIdx) {
+                std::string noteName = string_format("%s%d", names.at(noteIdx).c_str(), octaveIdx);
+                auto note = oct.Get(noteIdx);
+                m_notes.push_back(NoteDesc {
+                    .name = noteName,
+                    .note = note
+                });
+            }
+        }
+    }
+
+    NoteDesc const& Get(uint32_t noteIdx) const {
+        return m_notes[noteIdx];
+    }
+
+    uint32_t Size() const {
+        return m_notes.size();
+    }
+
+    std::vector<NoteDesc> m_notes;
+};
+
 struct MidiNote {
     uint8_t note_idx = 0;
     uint8_t velocity = 0;
-    ;
     bool is_active = false;
 };
 
@@ -80,6 +122,7 @@ struct MidiTracker {
         for (int i = 0; i < num_voices; ++i) {
             voices_queue.push(i);
         }
+        controls.resize(256);
     }
 
     void NoteOn(uint8_t note_idx, uint8_t velocity) {
@@ -106,6 +149,16 @@ struct MidiTracker {
         voices[voice_idx].velocity = 0.0f;
     }
 
+    void ControlChange(uint8_t controlIdx, uint8_t value)
+    {
+        controls[controlIdx] = value;
+    }
+    
+    void PitchBend(uint8_t value)
+    {
+
+    }
+
     int GetVoice() {
         int voice_id = voices_queue.front();
         voices_queue.pop();
@@ -123,4 +176,6 @@ struct MidiTracker {
     std::vector<MidiNote> voices;
 
     std::queue<int> voices_queue;
+
+    std::vector<uint8_t> controls;
 };

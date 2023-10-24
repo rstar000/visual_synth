@@ -14,10 +14,11 @@ struct FileMenu {
     void SaveAs() {
         std::string destination = pfd::save_file("Select a file").result();
         if (destination.empty()) {
-            std::cout << "Didn't select a file" << std::endl;
+            SPDLOG_ERROR("[FileMenu] File not selected");
             return;
         }
 
+        SPDLOG_INFO("[FileMenu] SaveAs: {}", destination);
         m_io->SaveFile(destination);
         filename = destination;
     }
@@ -41,10 +42,12 @@ struct FileMenu {
             return;
         }
 
+        SPDLOG_INFO("[FileMenu] Import: {}", selection[0]);
         m_io->LoadFile(selection[0]);
     }
     
     void Reset() {
+        SPDLOG_INFO("[FileMenu] Reset");
         m_io->Reset();
     }
 

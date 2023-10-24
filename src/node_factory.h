@@ -38,6 +38,7 @@ struct NodeFactory {
     };
 
     NodePtr CreateNode(const NodeType& type) const {
+        SPDLOG_INFO("[NodeFactory] CreateNode: {}", display_names.at(type));
         auto& func = MapGetConstRef(factory, type);
         NodePtr ret;
         func->Construct(ctx, &ret);

@@ -1,29 +1,27 @@
 #pragma once
 
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_opengl.h>
+#include <imgui_internal.h>
 #include <stdio.h>
 
 #include <memory>
 #include <thread>
 
-#define IMGUI_DEFINE_MATH_OPERATORS
-
-#include "imgui.h"
+#include "GUI/PatchBrowser.hpp"
+#include "file_menu.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl2.h"
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_opengl.h>
-#include <imgui_internal.h>
-
-#include "file_menu.h"
 #include "midi.h"
 #include "multigraph.h"
 #include "node_factory.h"
 #include "note.h"
 #include "synth.h"
+#include "util.h"
 
 class Gui {
    public:
-    Gui(Synth* synth);
+    Gui(Synth&, MidiInput&);
     ~Gui();
 
     void Start() {
@@ -53,7 +51,11 @@ class Gui {
 
    private:
     void InitWindow();
+    void DrawMainMenu();
     void DrawFrame();
+    void DrawGraph();
+    void DrawSidebar();
+    void DrawMidiSettings();
     // void DrawToolbar();
     void ShowContextMenu();
 
@@ -61,9 +63,11 @@ class Gui {
     SDL_GLContext gl_context;
 
     Synth* m_synth;
+    MidiInput* m_midi;
 
     KeyboardInput key_input;
     FileMenu file_menu;
+    PatchBrowser m_patchBrowser;
 
     GridUI* m_ui;
 
@@ -73,4 +77,6 @@ class Gui {
 
     std::thread _thread;
     bool _running = false;
+
+    bool m_showMidiSettings = false;
 };

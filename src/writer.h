@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <limits>
+#include "util.h"
 
 using SampleType = std::int16_t;  // 16 bit.
 const int kSampleRate = 44100;
@@ -42,7 +43,7 @@ class SampleWriter {
 
     void Write(float wave, int sample_idx) {
         auto sample = WaveToSample(wave);
-        m_ptr[sample_idx] += sample;
+        m_ptr[sample_idx] = SafeAdd(m_ptr[sample_idx], sample);
     }
 
     void Flush(int num_samples) { m_frameBeginIdx += num_samples; }

@@ -1,31 +1,42 @@
 #pragma once
 
-#include "rtmidi/RtMidi.h"
 #include <deque>
 #include <memory>
 #include <thread>
 #include <vector>
+#include <span>
 
+#include "util.h"
 #include "note.h"
+#include "rtmidi/RtMidi.h"
+
+struct MidiDeviceEntry {
+    std::string deviceName;
+    uint32_t portId;
+};
 
 class MidiInput {
-  public:
+   public:
     MidiInput(MidiTracker* tracker);
     ~MidiInput();
 
-    const auto& GetPortNames() const { return port_names; }
+    std::span<MidiDeviceEntry const> GetPortNames() const;
 
-    void SetActivePort(int i);
+    uint32_t GetActivePort() const;
+    void SetActiveDevice(uint32_t deviceId);
+    void ScanDevices();
 
-  private:
-    std::unique_ptr<RtMidiIn> midiin;
-    std::vector<std::string> port_names;
+   private:
+    uint32_t m_activeDevice = 0;
+   
+    std::unique_ptr<RtMidiIn> m_midiInput;
+    std::vector<MidiDeviceEntry> m_devices;
 
     MidiTracker* m_tracker;
 };
 
 class KeyboardInput {
-  public:
+   public:
     KeyboardInput(MidiTracker* tracker);
 
     void ProcessKey(int key, bool down);
