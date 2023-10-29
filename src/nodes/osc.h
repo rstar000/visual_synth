@@ -4,6 +4,7 @@
 #include <new>
 
 #include "GridUI/Widgets/Knob.hpp"
+#include "GridUI/Widgets/Toggle.hpp"
 #include "Oscillators/Common.hpp"
 #include "Oscillators/Waveform.hpp"
 #include "Param.hpp"
@@ -70,16 +71,18 @@ struct SineOscillatorNode : public Node {
     }
 
     void Draw() override {
-        m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.freqKnob),
-                                [this](ImRect dst) {
-                                    DrawKnob("Freq", dst, m_freq, 1.0f, 1000.0f,
-                                             440.0f, "%.2f", true);
-                                });
-
-        m_ctx.ui->DrawComponent(
-            m_layout->GetComponent(m_indices.ampKnob), [this](ImRect dst) {
-                DrawKnob("Amp", dst, m_amp, 0.0f, 1.0f, 0.5f, "%.2f", true);
+        GridUI& ui = *m_ctx.ui;
+        ui.BeginComponent(m_layout->GetComponent(m_indices.freqKnob));
+            DrawKnob(ui, "Freq", &m_freq, KnobParams<float>{
+                .minValue = 1.0f, .maxValue = 1000.0f, .defaultValue = 440.0f, .format = "%.2f" 
             });
+        ui.EndComponent();
+
+        ui.BeginComponent(m_layout->GetComponent(m_indices.ampKnob));
+            DrawKnob(ui, "Amp", &m_amp, KnobParams<float>{
+                .minValue = 0.0f, .maxValue = 1.0f, .defaultValue = 0.5f, .format = "%.2f" 
+            });
+        ui.EndComponent();
     }
 
    private:
@@ -227,6 +230,13 @@ struct SuperOscNode : public Node {
         for (int i = 0; i < NUM_CENTS_DETUNE; i++) {
             m_centsDetune.at(i) = std::pow(2.0f, i / 1200.0f);
         }
+
+        m_waveSelectToggleParams = {
+            .numOptions = 5,
+            .tooltips = {"Sine", "Square", "Triangle", "Saw", "Noise"},
+            .height = 20.0f,
+            .sideMargin = 5.0f
+        };
     }
 
     ~SuperOscNode() {}
@@ -328,49 +338,51 @@ struct SuperOscNode : public Node {
     }
 
     void Draw() override {
-        m_ctx.ui->DrawComponent(
-            m_layout->GetComponent(m_indices.octaveKnob), [this](ImRect dst) {
-                DrawKnobInt("Octave", dst, m_octave, -4, 4, 0, "%d", true);
+        GridUI& ui = *m_ctx.ui;
+        ui.BeginComponent(m_layout->GetComponent(m_indices.octaveKnob));
+            DrawKnobInt(ui, "Freq", &m_octave, KnobParams<int>{
+                .minValue = -4, .maxValue = 4, .defaultValue = 0, .format = "%d" 
             });
+        ui.EndComponent();
 
-        m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.semitoneKnob),
-                                [this](ImRect dst) {
-                                    DrawKnobInt("Semitone", dst, m_semitone,
-                                                -12, 12, 0, "%d", true);
-                                });
-
-        m_ctx.ui->DrawComponent(
-            m_layout->GetComponent(m_indices.centsKnob), [this](ImRect dst) {
-                DrawKnobInt("Finetune", dst, m_cents, -NUM_CENTS_DETUNE + 1, NUM_CENTS_DETUNE - 1, 0, "%d", true);
+        ui.BeginComponent(m_layout->GetComponent(m_indices.semitoneKnob));
+            DrawKnobInt(ui, "Semitone", &m_semitone, KnobParams<int>{
+                .minValue = -12, .maxValue = 12, .defaultValue = 0, .format = "%d" 
             });
+        ui.EndComponent();
 
-        m_ctx.ui->DrawComponent(
-            m_layout->GetComponent(m_indices.ampKnob), [this](ImRect dst) {
-                DrawKnob("Amp", dst, m_amp, 0.0f, 1.0f, 0.5f, "%.2f", true);
+        ui.BeginComponent(m_layout->GetComponent(m_indices.centsKnob));
+            DrawKnobInt(ui, "Finetune", &m_cents, KnobParams<int>{
+                .minValue = -(int)NUM_CENTS_DETUNE + 1, .maxValue = NUM_CENTS_DETUNE - 1, .defaultValue = 0, .format = "%d" 
             });
+        ui.EndComponent();
 
-        m_ctx.ui->DrawComponent(
-            m_layout->GetComponent(m_indices.unisonCountKnob),
-            [this](ImRect dst) {
-                DrawKnobInt("Unison", dst, m_unisonCount, 0, 9, 0, "%d", true);
+        ui.BeginComponent(m_layout->GetComponent(m_indices.ampKnob));
+            DrawKnob(ui, "Amp", &m_amp, KnobParams<float>{
+                .minValue = 0.0f, .maxValue = 1.0f, .defaultValue = 0.5f, .format = "%.2f" 
             });
+        ui.EndComponent();
 
-        m_ctx.ui->DrawComponent(
-            m_layout->GetComponent(m_indices.unisonWidthKnob),
-            [this](ImRect dst) {
-                DrawKnob("Width", dst, m_unisonWidth, 0.0f, 1.0f, 0.0f, "%.2f",
-                         true);
+        ui.BeginComponent(m_layout->GetComponent(m_indices.unisonCountKnob));
+            DrawKnobInt(ui, "Unison", &m_unisonCount, KnobParams<int>{
+                .minValue = 0, .maxValue = 9, .defaultValue = 0, .format = "%d" 
             });
+        ui.EndComponent();
 
-        m_ctx.ui->DrawComponent(
-            m_layout->GetComponent(m_indices.waveSelectMenu),
-            [this](ImRect dst) {
-                DrawKnobInt("Wave", dst, m_waveIndex, 0, NUM_WAVES - 1, 0, "%d", true);
-            });
+        ui.BeginComponent(m_layout->GetComponent(m_indices.unisonWidthKnob));
+            DrawKnob(ui, "Width", &m_unisonWidth, KnobParams<float>{
+                .minValue = 0.0f, .maxValue = 1.0f, .defaultValue = 0.0f, .format = "%.2f"});
+        ui.EndComponent();
+
+        ui.BeginComponent(m_layout->GetComponent(m_indices.waveSelectMenu));
+            DrawToggle(ui, "Wave select", &m_waveIndex, m_waveSelectToggleParams);
+        ui.EndComponent();
         m_pitchShift = ComputePitchShiftMultiplier();
     }
 
    private:
+    ToggleParams m_waveSelectToggleParams{};
+
     int m_octave = 0;
     int m_semitone = 0;
     int m_cents = 0;
@@ -379,7 +391,7 @@ struct SuperOscNode : public Node {
     float m_unisonWidth = 0.0f;
     int m_unisonCount = 0;
 
-    int m_waveIndex = 0u;
+    uint32_t m_waveIndex = 0u;
 
     float m_pitchShift = 1.0f;
 

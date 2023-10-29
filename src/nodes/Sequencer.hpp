@@ -4,6 +4,7 @@
 #include <cmath>
 #include <array>
 
+#include "GridUI/Colors.hpp"
 #include "imgui.h"
 #include "node.h"
 #include "node_types.h"
@@ -98,25 +99,29 @@ struct MonoSequencer : public Node {
     }
 
     void Draw() override {
+        GridUI const& ui = *m_ctx.ui;
         for (uint32_t x = 0; x < NUM_BEATS; ++x) {
-            m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.volumeFaders[x]), [this, &x] (ImRect dst) {
-                ImGui::PushID(x);
-                if (m_beatIdx == x) {
-                    ImGui::PushStyleColor(ImGuiCol_FrameBg, (ImVec4)ImColor(200, 0, 0));
-                    ImGui::PushStyleColor(ImGuiCol_SliderGrab, (ImVec4)ImColor(255, 0, 0));
-                    DrawFaderRect("##volume", dst, m_volume[x], 0.0f, 1.0f, "%.2f");
-                    ImGui::PopStyleColor(2);
-                } else {
-                    DrawFaderRect("##volume", dst, m_volume[x], 0.0f, 1.0f, "%.2f");
-                }
-                ImGui::PopID();
-            });
+            m_ctx.ui->BeginComponent(m_layout->GetComponent(m_indices.volumeFaders[x]));
+                DrawFaderRect(ui, "##volume", &m_volume[x], 
+                    FaderRectParams{
+                        .minValue = 0.0f,
+                        .maxValue = 1.0f,
+                        .format = "%.2f",
+                        .speed = 0.0f,
+                        .highlighted = (x == m_beatIdx)
+                }); 
+            m_ctx.ui->EndComponent();
 
-            m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.durationFaders[x]), [this, &x] (ImRect dst) {
-                ImGui::PushID(x);
-                DrawFaderRect("##duration", dst, m_duration[x], 0.0f, 1.0f, "%.2f");
-                ImGui::PopID();
-            });
+            m_ctx.ui->BeginComponent(m_layout->GetComponent(m_indices.durationFaders[x]));
+                DrawFaderRect(ui, "##duration", &m_duration[x], 
+                    FaderRectParams{
+                        .minValue = 0.0f,
+                        .maxValue = 1.0f,
+                        .format = "%.2f",
+                        .speed = 0.0f,
+                        .highlighted = (x == m_beatIdx)
+                });
+            m_ctx.ui->EndComponent();
         }
     }
 
@@ -207,19 +212,19 @@ struct HoldNotesNode : public Node {
     }
 
     void Draw() override {
+        GridUI& ui = *m_ctx.ui;
+        int const maxNoteIdx = static_cast<int>(m_noteLookup.Size()) - 1;
         for (uint32_t x = 0; x < NUM_NOTES; ++x) {
-            m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.semitoneKnob[x]), [this, &x] (ImRect dst) {
-                ImGui::PushID(x);
+            ui.BeginComponent(m_layout->GetComponent(m_indices.semitoneKnob[x]));
                 const char* activeNoteName = m_noteLookup.Get(m_semitone[x]).name.c_str();
-                DrawKnobInt("Semitone", dst, m_semitone[x], 0, static_cast<int>(m_noteLookup.Size()) - 1, 0, activeNoteName, true);
-                ImGui::PopID();
-            });
+                DrawKnobInt(ui, "Semitone", &m_semitone[x], KnobParams<int>{
+                    .minValue = 0, .maxValue = maxNoteIdx, .defaultValue = 0, .format = activeNoteName, .colorIndex = 0
+                });
+            ui.EndComponent();
 
-            m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.noteEnable[x]), [this, &x] (ImRect dst) {
-                ImGui::PushID(x);
-                DrawCheckbox("", dst, m_enable[x]);
-                ImGui::PopID();
-            });
+            ui.BeginComponent(m_layout->GetComponent(m_indices.noteEnable[x]));
+                DrawCheckbox(*m_ctx.ui, "", m_enable[x]);
+            ui.EndComponent();
 
             m_note[x] = m_noteLookup.Get(m_semitone[x]).note;
         }
@@ -368,25 +373,29 @@ struct Arpeggiator : public Node {
     }
 
     void Draw() override {
+        GridUI& ui = *m_ctx.ui;
         for (uint32_t x = 0; x < NUM_BEATS; ++x) {
-            m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.volumeFaders[x]), [this, &x] (ImRect dst) {
-                ImGui::PushID(x);
-                if (m_beatIdx == x) {
-                    ImGui::PushStyleColor(ImGuiCol_FrameBg, (ImVec4)ImColor(200, 0, 0));
-                    ImGui::PushStyleColor(ImGuiCol_SliderGrab, (ImVec4)ImColor(255, 0, 0));
-                    DrawFaderRect("##volume", dst, m_volume[x], 0.0f, 1.0f, "%.2f");
-                    ImGui::PopStyleColor(2);
-                } else {
-                    DrawFaderRect("##volume", dst, m_volume[x], 0.0f, 1.0f, "%.2f");
-                }
-                ImGui::PopID();
-            });
+            m_ctx.ui->BeginComponent(m_layout->GetComponent(m_indices.volumeFaders[x]));
+                DrawFaderRect(ui, "##volume", &m_volume[x], 
+                    FaderRectParams{
+                        .minValue = 0.0f,
+                        .maxValue = 1.0f,
+                        .format = "%.2f",
+                        .speed = 0.0f,
+                        .highlighted = (x == m_beatIdx)
+                }); 
+            m_ctx.ui->EndComponent();
 
-            m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.durationFaders[x]), [this, &x] (ImRect dst) {
-                ImGui::PushID(x);
-                DrawFaderRect("##duration", dst, m_duration[x], 0.0f, 1.0f, "%.2f");
-                ImGui::PopID();
-            });
+            m_ctx.ui->BeginComponent(m_layout->GetComponent(m_indices.durationFaders[x]));
+                DrawFaderRect(ui, "##duration", &m_duration[x], 
+                    FaderRectParams{
+                        .minValue = 0.0f,
+                        .maxValue = 1.0f,
+                        .format = "%.2f",
+                        .speed = 0.0f,
+                        .highlighted = (x == m_beatIdx)
+                });
+            m_ctx.ui->EndComponent();
         }
     }
 

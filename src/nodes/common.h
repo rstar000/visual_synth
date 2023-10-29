@@ -139,9 +139,12 @@ struct MixNode : public Node {
     }
 
     void Draw() override {
-        m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.mixKnob), [this](ImRect dst) {
-            DrawKnob("Alpha", dst, signal, 0.0f, 1.0f, 0.5f, "%.2f", true);
-        });
+        GridUI& ui = *m_ctx.ui;
+        ui.BeginComponent(m_layout->GetComponent(m_indices.mixKnob));
+            DrawKnob(ui, "Mix", &m_alpha, KnobParams<float>{
+                .minValue = 0.0f, .maxValue = 1.0f, .defaultValue = 0.5f, .format = "%.2f" 
+            });
+        ui.EndComponent();
     }
 
    protected:
@@ -432,17 +435,24 @@ struct DebugNode : public Node {
     }
 
     void Draw() override {
-        m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.knobVMin), [this](ImRect dst) {
-            DrawKnob("Min", dst, m_limits[0], -10.0f, 10.0f, -1.0f, "%.2f", true);
-        });
+        GridUI& ui = *m_ctx.ui;
+        ui.BeginComponent(m_layout->GetComponent(m_indices.knobVMin));
+            DrawKnob(ui, "Min", &m_limits[0], KnobParams<float>{
+                .minValue = -10.0f, .maxValue = 10.0f, .defaultValue = -1.0f, .format = "%.2f" 
+            });
+        ui.EndComponent();
 
-        m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.knobVMax), [this](ImRect dst) {
-            DrawKnob("Max", dst, m_limits[1], -10.0f, 10.0f, 1.0f, "%.2f", true);
-        });
+        ui.BeginComponent(m_layout->GetComponent(m_indices.knobVMax));
+            DrawKnob(ui, "Max", &m_limits[0], KnobParams<float>{
+                .minValue = -10.0f, .maxValue = 10.0f, .defaultValue = 1.0f, .format = "%.2f" 
+            });
+        ui.EndComponent();
 
-        m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.knobResolution), [this](ImRect dst) {
-            DrawKnob("Resolution", dst, m_resolution, 0.0f, 100.0f, 1.0f, "%.2f", true);
-        });
+        ui.BeginComponent(m_layout->GetComponent(m_indices.knobResolution));
+            DrawKnob(ui, "Resolution", &m_limits[0], KnobParams<float>{
+                .minValue = -10.0f, .maxValue = 10.0f, .defaultValue = 0.01f, .format = "%.2f" 
+            });
+        ui.EndComponent();
 
         m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.display), [this](ImRect dst) {
             ImGui::SetCursorScreenPos(dst.Min);

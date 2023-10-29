@@ -28,7 +28,8 @@
        X(ADSR) \
        X(DX7EG) \
        X(MONO_SEQUENCER) \
-       X(MIX) 
+       X(MIX) \
+       X(BIQUAD_FILTER) \
 
 enum class NodeType {
 #define X(v)       v,

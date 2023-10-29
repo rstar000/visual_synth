@@ -1,15 +1,29 @@
 #pragma once
+#include "GridUI/Colors.hpp"
 #include "imgui.h"
 #include "imgui_internal.h"
 
 #include <algorithm>
 
+#include "GridUI/GridUI.hpp"
+
+struct FaderRectParams {
+    float minValue;
+    float maxValue;
+    const char* format;
+    float speed;
+    bool highlighted;
+};
+
 namespace ImGui
 {
 
-inline bool VFader(const char* label, const ImVec2& size, ImGuiDataType data_type, void* p_data, const void* p_min, const void* p_max, const char* format, ImGuiSliderFlags flags)
+inline bool VFader(GridUI const& ui, const char* label, ImGuiDataType data_type, void* p_data, const void* p_min, const void* p_max, const char* format, ImGuiSliderFlags flags)
 {
     ImGuiWindow* window = GetCurrentWindow();
+    ImRect const& dst = ui.GetComponentRect();
+    ImVec2 size = dst.GetSize();
+    ImGui::SetCursorScreenPos(dst.Min);
     if (window->SkipItems)
         return false;
 
@@ -83,9 +97,22 @@ inline bool VFader(const char* label, const ImVec2& size, ImGuiDataType data_typ
     return value_changed;
 }
 
-inline bool VFaderRect(const char* label, const ImRect& dst, float* p_data, const float p_min, const float p_max, const char* format, float _speed, ImGuiSliderFlags flags)
+inline bool VFaderRect(GridUI const& ui, const char* label, float* p_data, FaderRectParams params)
 {
     ImGuiWindow* window = GetCurrentWindow();
+    ImRect const& dst = ui.GetComponentRect();
+    ColorScheme const& colors = ui.GetColorScheme();
+
+    ImU32 frameBgHovered = colors.hovered.secondary;
+    ImU32 frameBgActive = colors.hovered.primary;
+    ImU32 sliderGrabActive = colors.hovered.primary;
+    ImU32 frameBg = colors.range.secondary;
+    ImU32 sliderGrab = colors.range.primary;
+
+    if (params.highlighted) {
+        frameBg = colors.selection.secondary;
+        sliderGrab = colors.selection.primary;
+    } 
 
     if (window->SkipItems)
         return false;
@@ -100,24 +127,23 @@ inline bool VFaderRect(const char* label, const ImRect& dst, float* p_data, cons
     bool is_active = ImGui::IsItemActive();
     bool is_hovered = ImGui::IsItemHovered();
 
-    auto speed = _speed == 0 ? (p_max - p_min) / 250.f : _speed;
-    bool value_changed = ImGui::DragBehavior(gid, ImGuiDataType_Float, p_data, speed, &p_min, &p_max, format, drag_flags);
+    auto speed = params.speed == 0 ? (params.maxValue - params.minValue) / 250.f : params.speed;
+    bool value_changed = ImGui::DragBehavior(gid, ImGuiDataType_Float, p_data, speed, &params.minValue, &params.maxValue, params.format, drag_flags);
 
     ImGuiContext& g = *GImGui;
-    const ImGuiStyle& style = g.Style;
     const ImGuiID id = window->GetID(label);
 
     const ImRect frame_bb = dst;
-    float value_frac = std::clamp((*p_data - p_min) / (p_max - p_min), 0.0f, 1.0f);
+    float value_frac = std::clamp((*p_data - params.minValue) / (params.maxValue - params.minValue), 0.0f, 1.0f);
     float value_pos = (1.0f - value_frac) * dst.GetHeight();
 
     const ImRect grab_bb = ImRect(dst.Min + ImVec2(0.0f, value_pos), dst.Max);
-    const ImU32 frame_col = GetColorU32(g.ActiveId == id ? ImGuiCol_FrameBgActive : is_hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
+    const ImU32 frame_col = GetColorU32(g.ActiveId == id ? frameBgActive : is_hovered ? frameBgHovered : frameBg);
     RenderNavHighlight(frame_bb, id);
     RenderFrame(frame_bb.Min, frame_bb.Max, frame_col, true, g.Style.FrameRounding);
 
     if (grab_bb.Max.y > grab_bb.Min.y)
-        window->DrawList->AddRectFilled(grab_bb.Min, grab_bb.Max, GetColorU32(g.ActiveId == id ? ImGuiCol_SliderGrabActive : ImGuiCol_SliderGrab), 0.0f);
+        window->DrawList->AddRectFilled(grab_bb.Min, grab_bb.Max, GetColorU32(g.ActiveId == id ? sliderGrabActive : sliderGrab), 0.0f);
 
     if (is_active || is_hovered)
         ImGui::SetTooltip("%.3f", *p_data);
@@ -126,15 +152,13 @@ inline bool VFaderRect(const char* label, const ImRect& dst, float* p_data, cons
 
 }
 
+/* inline bool DrawFader(GridUI const& ui, const char* label, float& v, float vMin, float vMax, const char* format) */
+/* { */
+/*     return ImGui::VFader(label, dst.GetSize(), ImGuiDataType_Float, &v, &vMin, &vMax, format, ImGuiSliderFlags_None); */
+/* } */
 
-inline bool DrawFader(const char* label, const ImRect& dst, float& v, float vMin, float vMax, const char* format)
+
+inline bool DrawFaderRect(GridUI const& ui, const char* label, float* v, FaderRectParams const& params)
 {
-    ImGui::SetCursorScreenPos(dst.Min);
-    return ImGui::VFader(label, dst.GetSize(), ImGuiDataType_Float, &v, &vMin, &vMax, format, ImGuiSliderFlags_None);
-}
-
-
-inline bool DrawFaderRect(const char* label, const ImRect& dst, float& v, float vMin, float vMax, const char* format)
-{
-    return ImGui::VFaderRect(label, dst, &v, vMin, vMax, format, 0.0f, ImGuiSliderFlags_None);
+    return ImGui::VFaderRect(ui, label, v, params);
 }

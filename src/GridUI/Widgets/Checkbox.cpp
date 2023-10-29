@@ -1,3 +1,4 @@
+#include "GridUI/Colors.hpp"
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "Checkbox.hpp"
@@ -10,13 +11,15 @@ namespace ImGui {
 constexpr float CHECKBOX_SIZE = 20.0f;
 constexpr float CHECKBOX_PADDING = 2.0f;
 
-bool DrawCheckboxImpl(const char* label, const ImRect& dst, bool& value, bool labelBelow, float labelOffset) 
+bool DrawCheckboxImpl(ColorScheme const& colors, const char* label, const ImRect& dst, bool& value, bool labelBelow, float labelOffset) 
 {
     const ImVec2 outlineOrigin = {dst.Min.x + (dst.GetWidth() - CHECKBOX_SIZE) * 0.5f,
                                   dst.Min.y + (dst.GetHeight() - CHECKBOX_SIZE) * 0.5f};
     auto drawList = ImGui::GetWindowDrawList();
 
-    ImU32 outlineColor = IM_COL32(255, 0, 0, 255);
+    ImU32 disabledColor = colors.nodeColors.titleBar.hovered;  //GetColorU32(ImGuiCol_FrameBg);
+    ImU32 enabledColor = colors.selection.primary; //GetColorU32(ImGuiCol_FrameBgActive);
+
     ImVec2 checkboxSize = {CHECKBOX_SIZE, CHECKBOX_SIZE};
     ImRect checkboxRect = ImRect{outlineOrigin, outlineOrigin + checkboxSize};
 
@@ -29,17 +32,20 @@ bool DrawCheckboxImpl(const char* label, const ImRect& dst, bool& value, bool la
         value = !(value);
     }
 
-    drawList->AddRect(outlineOrigin,
-                      outlineOrigin + ImVec2(CHECKBOX_SIZE, CHECKBOX_SIZE),
-                      outlineColor, 1.0f);
-
-
     ImVec2 offset = {CHECKBOX_PADDING, CHECKBOX_PADDING};
     if (value) {
+        drawList->AddRect(outlineOrigin,
+                        outlineOrigin + ImVec2(CHECKBOX_SIZE, CHECKBOX_SIZE),
+                        enabledColor, 1.0f);
+
         drawList->AddRectFilled(
             outlineOrigin + offset,
             outlineOrigin + ImVec2(CHECKBOX_SIZE, CHECKBOX_SIZE) - offset,
-            outlineColor);
+            enabledColor);
+    } else {
+        drawList->AddRect(outlineOrigin,
+                        outlineOrigin + ImVec2(CHECKBOX_SIZE, CHECKBOX_SIZE),
+                        disabledColor, 1.0f);
     }
 
     float textHeight = GetTextLineHeightWithSpacing();

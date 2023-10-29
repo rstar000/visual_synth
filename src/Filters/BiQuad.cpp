@@ -67,7 +67,7 @@ void Biquad::setBiquad(int type, double Fc, double Q, double peakGainDB) {
 
 void Biquad::calcBiquad(void) {
     double norm;
-    double V = pow(10, fabs(peakGain) / 20.0);
+    double V = 0.0; //pow(10, fabs(peakGain) / 20.0);
     double K = tan(M_PI * Fc);
     switch (this->type) {
         case bq_type_lowpass:

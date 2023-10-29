@@ -44,13 +44,19 @@ struct AudioOutputNode : public Node {
     }
 
     void Draw() override {
-        float norm = (_last + 1.0f) / 2.0f;
+        GridUI& ui = *m_ctx.ui;
+        //float norm = (_last + 1.0f) / 2.0f;
 
-        m_ctx.ui->DrawComponent(
-            m_layout->GetComponent(m_indices.gateFader), 
-            [this] (ImRect dst) {
-                DrawFader("Volume", dst, volume, 0.0f, 1.0f, "%.2f");
+        m_ctx.ui->BeginComponent(m_layout->GetComponent(m_indices.gateFader));
+            DrawFaderRect(ui, "Volume", &volume, 
+                FaderRectParams{
+                    .minValue = 0.0f,
+                    .maxValue = 1.0f,
+                    .format = "%.2f",
+                    .speed = 0.0f,
+                    .highlighted = false
             });
+        m_ctx.ui->EndComponent();
         // ImGui::PushItemWidth(100.0f);
         // ImGui::ProgressBar(norm, ImVec2(0.0f, 0.0f));
         // ImGui::SliderFloat(slider_label.c_str(), &volume, 0.0, 1.0, "%.2f",

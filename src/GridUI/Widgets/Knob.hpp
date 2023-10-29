@@ -2,12 +2,24 @@
 
 #include <iostream>
 
+#include "GridUI/Colors.hpp"
 #include "imgui.h"
 #include "imgui_knobs.h"
 
-inline bool DrawKnob(const char* label, ImRect dst, float& v, float vMin,
-                     float vMax, float vDefault, const char* format,
-                     bool useDefault) {
+#include "GridUI/GridUI.hpp"
+
+template <typename T>
+struct KnobParams {
+    T minValue;
+    T maxValue;
+    T defaultValue;
+    const char* format;
+    bool useDefault = true;
+    uint32_t colorIndex = 0;
+};
+
+inline bool DrawKnob(GridUI const& ui, const char* label, float* v, KnobParams<float> const& params) {
+    ImRect const& dst = ui.GetComponentRect();
     ImVec2 size = dst.GetSize();
     ImVec2 delta = {0, 0};
     if (size.x < size.y) {
@@ -20,17 +32,26 @@ inline bool DrawKnob(const char* label, ImRect dst, float& v, float vMin,
 
     int flags = 0;
     // flags |= ImGuiKnobFlags_NoTitle;
-    if (useDefault) {
+    if (params.useDefault) {
         flags |= ImGuiKnobFlags_UseDefaultValue;
     }
-    return ImGuiKnobs::Knob(label, ImVec2(minSize, minSize), &v, vMin, vMax,
-                            vDefault, 0.0f, format, ImGuiKnobVariant_Wiper,
+
+    const ColorScheme& colors = ui.GetColorScheme();
+
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, colors.nodeColors.border.normal);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, colors.range.primary);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colors.range.secondary);
+
+    bool valueChanged = ImGuiKnobs::Knob(label, ImVec2(minSize, minSize), v, params.minValue, params.maxValue,
+                            params.defaultValue, 0.0f, params.format, ImGuiKnobVariant_Wiper,
                             flags);
+
+    ImGui::PopStyleColor(3);
+    return valueChanged;
 }
 
-inline bool DrawKnobInt(const char* label, ImRect dst, int& v, int vMin,
-                        int vMax, int vDefault, const char* format,
-                        bool useDefault) {
+inline bool DrawKnobInt(GridUI const& ui, const char* label, int* v, KnobParams<int> const& params) {
+    ImRect const& dst = ui.GetComponentRect();
     ImVec2 size = dst.GetSize();
     ImVec2 delta = {0, 0};
     if (size.x < size.y) {
@@ -43,10 +64,18 @@ inline bool DrawKnobInt(const char* label, ImRect dst, int& v, int vMin,
 
     int flags = 0;
     // flags |= ImGuiKnobFlags_NoTitle;
-    if (useDefault) {
+    if (params.useDefault) {
         flags |= ImGuiKnobFlags_UseDefaultValue;
     }
-    return ImGuiKnobs::KnobInt(label, ImVec2(minSize, minSize), &v, vMin, vMax,
-                               vDefault, 0.0f, format, ImGuiKnobVariant_Wiper,
+
+    ColorScheme const& colors = ui.GetColorScheme();
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, colors.nodeColors.border.normal);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, colors.range.primary);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colors.range.secondary);
+    bool valueChanged = ImGuiKnobs::KnobInt(label, ImVec2(minSize, minSize), v, params.minValue, params.maxValue,
+                               params.defaultValue, 0.0f, params.format, ImGuiKnobVariant_Wiper,
                                flags);
+
+    ImGui::PopStyleColor(3);
+    return valueChanged;
 }

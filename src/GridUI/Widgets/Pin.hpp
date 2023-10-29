@@ -8,6 +8,7 @@ constexpr float PIN_SIZE = 20.0f;
 
 enum class PinState {
     kNormal,
+    kConnected,
     kHovered,
     kSelected
 };
@@ -48,6 +49,11 @@ inline bool DrawPin(const char* label, ImRect dst, PinKind kind, PinState state,
     auto drawFunc = ((kind == PinKind::kIn) ? DrawInPin : DrawOutPin);
     ColorRGBA fill = colors.fill.normal;
     ColorRGBA border = colors.border.normal;
+
+    if (state == PinState::kConnected) {
+        fill = border;
+    }
+
     if (state == PinState::kHovered) {
         fill = colors.fill.hovered;
         border = colors.border.hovered;

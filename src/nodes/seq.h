@@ -377,16 +377,19 @@ struct MidiControlNode : public Node {
     }
 
     void Draw() override {
-        m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.controlIndex),
-                                [this](ImRect dst) {
-                                    DrawKnobInt("Control ID", dst, m_controlIdx,
-                                                0, 255, 1, "%d", true);
-                                });
+        GridUI& ui = *m_ctx.ui;
 
-        m_ctx.ui->DrawComponent(
-            m_layout->GetComponent(m_indices.controlKnob), [this](ImRect dst) {
-                DrawKnobInt("Value", dst, m_value, 0, 255, 1, "%d", true);
+        ui.BeginComponent(m_layout->GetComponent(m_indices.controlIndex));
+            DrawKnobInt(ui, "Control ID", &m_controlIdx, KnobParams<int>{
+                .minValue = 0, .maxValue = 255, .defaultValue = 1, .format = "%d"
             });
+        ui.EndComponent();
+
+        ui.BeginComponent(m_layout->GetComponent(m_indices.controlKnob));
+            DrawKnobInt(ui, "Value", &m_value, KnobParams<int>{
+                .minValue = 0, .maxValue = 255, .defaultValue = 1, .format = "%d"
+            });
+        ui.EndComponent();
     }
 
     MidiTracker* m_tracker;

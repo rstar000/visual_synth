@@ -111,15 +111,15 @@ ColorRGB hsl2rgb(ColorHSL hsl) {
 std::vector<ColorRGB> GenPaletteRainbow() {
     std::vector<std::string> hexColors = {"f94144", "f3722c", "f8961e",
                                           "f9c74f", "90be6d", "43aa8b",
-                                          "577590", "7d618f", "2f4550"};
+                                          "577590", "7d618f", "191B24"};
     std::vector<ColorRGB> colors(hexColors.size());
     std::transform(hexColors.begin(), hexColors.end(), colors.begin(),
                    ColorHexToRGB);
     return colors;
 }
 
-ColorRGBA RgbToRgba(ColorRGB color) {
-    return IM_COL32(static_cast<uint8_t>(color.r), static_cast<uint8_t>(color.g), static_cast<uint8_t>(color.b), 255);
+ColorRGBA RgbToRgba(ColorRGB color, uint8_t opacity = 255) {
+    return IM_COL32(static_cast<uint8_t>(color.r), static_cast<uint8_t>(color.g), static_cast<uint8_t>(color.b), opacity);
 }
 
 ColorRGB AdjustBrightness(ColorRGB input, float delta)
@@ -130,18 +130,30 @@ ColorRGB AdjustBrightness(ColorRGB input, float delta)
 }
 
 ColorScheme ColorScheme::GenerateDefault() {
+    const ColorRGB DARK_GREY_1 = ColorHexToRGB("5A5553");
+    const ColorRGB DARK_GREY_2 = ColorHexToRGB("756E6C");
+    const ColorRGB LIGHT_GREY_1 = ColorHexToRGB("938C8A");
+    const ColorRGB LIGHT_GREY_2 = ColorHexToRGB("B1ACAA");
+
+    const ColorRGB YELLOW_1 = ColorHexToRGB("F9C54E");
+    const ColorRGB ORANGE_1 = ColorHexToRGB("F58B51");
+    const ColorRGB RED_1 = ColorHexToRGB("FA6163");
+    const ColorRGB GREEN_1 = ColorHexToRGB("90BE6D");
+    const ColorRGB GREEN_2 = ColorHexToRGB("50B99A");
+    const ColorRGB PURPLE_1 = ColorHexToRGB("7366A3");
+
     ColorScheme colors;
     auto palette = GenPaletteRainbow();
     colors.pinColors.fill = ColorScheme::ColorStates {
-        .normal = RgbToRgba(palette[3]),
-        .hovered =  RgbToRgba(palette[2]),
-        .selected = RgbToRgba(palette[0])
+        .normal = RgbToRgba(DARK_GREY_1),
+        .hovered =  RgbToRgba(ORANGE_1),
+        .selected = RgbToRgba(RED_1)
     };
 
     colors.pinColors.border = ColorScheme::ColorStates {
-        .normal   = RgbToRgba(AdjustBrightness(palette[3], -0.3f)),
-        .hovered  = RgbToRgba(AdjustBrightness(palette[2], -0.3f)),
-        .selected = RgbToRgba(AdjustBrightness(palette[0], -0.3f))
+        .normal   = RgbToRgba(AdjustBrightness(YELLOW_1, -0.3f)),
+        .hovered  = RgbToRgba(AdjustBrightness(ORANGE_1, -0.3f)),
+        .selected = RgbToRgba(AdjustBrightness(RED_1, -0.3f))
     };
 
     colors.gridColors = {
@@ -151,22 +163,46 @@ ColorScheme ColorScheme::GenerateDefault() {
     };
 
     colors.nodeColors.titleBar = {
-        .normal   = RgbToRgba(palette[6]),
-        .hovered  = RgbToRgba(palette[7]),
-        .selected = RgbToRgba(palette[0]),
+        .normal   = RgbToRgba(DARK_GREY_2),
+        .hovered  = RgbToRgba(LIGHT_GREY_2),
+        .selected = RgbToRgba(RED_1),
     };
 
     colors.nodeColors.border = {
-        .normal   = RgbToRgba(palette[6]),
-        .hovered  = RgbToRgba(palette[7]),
-        .selected = RgbToRgba(palette[0]),
+        .normal   = RgbToRgba(DARK_GREY_2),
+        .hovered  = RgbToRgba(DARK_GREY_2),
+        .selected = RgbToRgba(RED_1),
     };
 
-    colors.nodeColors.background = RgbToRgba(palette[8]);
+    colors.nodeColors.background = RgbToRgba(DARK_GREY_1);
 
-    colors.widgetColors = ColorScheme::WidgetColors {
-        .primary = RgbToRgba(palette[4]),
-        .secondary   = RgbToRgba(AdjustBrightness(palette[4], -0.3f)),
+    colors.selection = ColorScheme::WidgetColors {
+        .primary = RgbToRgba(RED_1),
+        .secondary   = RgbToRgba(AdjustBrightness(RED_1, -0.3f)),
+        .text   = GenGrey(220)
+    };
+
+    colors.range = ColorScheme::WidgetColors {
+        .primary = RgbToRgba(GREEN_1),
+        .secondary   = RgbToRgba(GREEN_2),
+        .text   = GenGrey(220)
+    };
+
+    colors.display = ColorScheme::WidgetColors {
+        .primary = RgbToRgba(PURPLE_1),
+        .secondary   = RgbToRgba(AdjustBrightness(PURPLE_1, -0.3f)),
+        .text   = GenGrey(220)
+    };
+
+    colors.hovered = ColorScheme::WidgetColors {
+        .primary   = RgbToRgba(AdjustBrightness(YELLOW_1, 0.0f), 200),
+        .secondary  = RgbToRgba(AdjustBrightness(ORANGE_1, 0.0f), 200),
+        .text   = GenGrey(220)
+    };
+
+    colors.inactive = ColorScheme::WidgetColors {
+        .primary   = RgbToRgba(AdjustBrightness(LIGHT_GREY_1, 0.0f)),
+        .secondary  = RgbToRgba(AdjustBrightness(LIGHT_GREY_2, 0.0f)),
         .text   = GenGrey(220)
     };
     return colors;

@@ -24,7 +24,7 @@
 #include "GridUI/Widgets/Pin.hpp"
 
 constexpr float GRID_STEP = 100.0f;
-constexpr float TITLE_BAR_OFFSET = 20.0f;
+constexpr float TITLE_BAR_OFFSET = 25.0f;
 constexpr float ROUNDING = 5.0f;
 
 ImRect TransformComponent(ImRect const& componentRect, ImRect const& contentRect);
@@ -44,6 +44,8 @@ class GridUI
         uint32_t id;
         ImRect bbox;
         PinKind type;
+        bool connected;
+        const char* label = nullptr;
     };
 
     struct LinkQuery {
@@ -63,6 +65,7 @@ class GridUI
     std::string m_nodeTitle;
     ImRect m_titleBarRect;
     ImRect m_contentRect;
+    ImRect m_componentRect;
     ImVec2* m_nodeGridPos;
     ImVec2 m_nodeGridSize;
     uint32_t m_nodeId;
@@ -282,7 +285,18 @@ class GridUI
         drawFunc(TransformComponent(component.Rect(), m_contentRect));
     }
 
-    ImRect GetNodeRect() const { return m_currentRect; }
+    void BeginComponent(GridComponent const& component) {
+        ImGui::PushID(component.GetIndex());
+        m_componentRect = TransformComponent(component.Rect(), m_contentRect);
+    }
+
+    void EndComponent() {
+        ImGui::PopID();
+    }
+
+    ImRect const& GetNodeRect() const { return m_currentRect; }
+    ImRect const& GetComponentRect() const { return m_componentRect; }
+    ColorScheme const& GetColorScheme() const { return m_colors; }
 
     void EndNode() {
         // Draw node frame
@@ -328,12 +342,21 @@ class GridUI
             draw_list->AddRectFilled(m_titleBarRect.Min, m_titleBarRect.Max,
                                      m_colors.nodeColors.titleBar.hovered,
                                      ROUNDING, titleFlags);
+
+            draw_list->AddRect(m_titleBarRect.Min, m_currentRect.Max,
+                               m_colors.nodeColors.border.hovered, ROUNDING,
+                               frameFlags, 3.0f);
+
         } else {
             // draw_list->AddRect(m_titleBarRect.Min, m_currentRect.Max,
             // m_colors.nodeColors.border.normal);
             draw_list->AddRectFilled(m_titleBarRect.Min, m_titleBarRect.Max,
                                      m_colors.nodeColors.titleBar.normal,
                                      ROUNDING, titleFlags);
+
+            draw_list->AddRect(m_titleBarRect.Min, m_currentRect.Max,
+                               m_colors.nodeColors.border.normal, ROUNDING,
+                               frameFlags, 3.0f);
         }
 
         // Draw window title
@@ -348,14 +371,17 @@ class GridUI
         ImGui::PopItemWidth();
 
         // Draw delete button
-        ImGui::SetCursorScreenPos(ImVec2{
-            m_titleBarRect.Max.x - TITLE_BAR_OFFSET, m_titleBarRect.Min.y});
-        if (ImGui::ButtonEx("x##close",
+        ImVec2 closeButtonOrigin = {m_titleBarRect.Max.x - TITLE_BAR_OFFSET, m_titleBarRect.Min.y};
+        ImVec2 closeButtonSize = {TITLE_BAR_OFFSET, TITLE_BAR_OFFSET};
+        ImGui::SetCursorScreenPos(closeButtonOrigin);
+        if (ImGui::InvisibleButton("##close",
                             ImVec2{TITLE_BAR_OFFSET, TITLE_BAR_OFFSET},
                             ImGuiButtonFlags_PressedOnDoubleClick)) {
             m_deletedNode = m_nodeId;
             SPDLOG_INFO("[GridUI] Delete node: {}", m_nodeId);
         }
+
+        draw_list->AddCircleFilled(closeButtonOrigin + closeButtonSize * 0.5f, closeButtonSize.x * 0.25f, m_colors.selection.primary);
 
         // Set current node as selected
         if (is_active && ImGui::IsMouseClicked(0)) {
@@ -391,8 +417,19 @@ class GridUI
             bool is_selected = m_selectedPin && *m_selectedPin == pin.id;
 
             PinState state = PinState::kNormal;
+            if (pin.connected) {
+                state = PinState::kConnected;
+            }
             if (is_hovered) {
                 state = PinState::kHovered;
+
+                if (ImGui::BeginTooltip())
+                {
+                    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+                    ImGui::TextUnformatted(pin.label);
+                    ImGui::PopTextWrapPos();
+                    ImGui::EndTooltip();
+                }
             }
             if (is_selected) {
                 state = PinState::kSelected;
@@ -431,12 +468,14 @@ class GridUI
         }
     }
 
-    void AddPin(uint32_t pinId, PinKind pinType, ImRect bbox) {
+    void AddPin(const char* label, uint32_t pinId, PinKind pinType, ImRect bbox, bool connected) {
         m_currentNodePins.push_back(
             PinDescription{
                 .id = pinId, 
                 .bbox = TransformComponent(bbox, m_contentRect), 
-                .type = pinType});
+                .type = pinType,
+                .connected = connected,
+                .label = label});
 
         m_pins[pinId] = m_currentNodePins.back();
     }
@@ -452,9 +491,16 @@ class GridUI
         }
 
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        draw_list->AddLine(pinA.bbox.GetCenter(),
-                           pinB.bbox.GetCenter(),
-                           IM_COL32(200, 200, 0, 160), 3.0f);
+        if (!is_selected) {
+            draw_list->AddLine(pinA.bbox.GetCenter(),
+                            pinB.bbox.GetCenter(),
+                            IM_COL32(180, 180, 70, 160), 3.0f);
+        } else {
+            draw_list->AddLine(pinA.bbox.GetCenter(),
+                            pinB.bbox.GetCenter(),
+                            m_colors.selection.secondary, 3.0f);
+
+        }
     }
 
     void HandleLinkQuery(auto linkFunc) {

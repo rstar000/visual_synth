@@ -245,7 +245,6 @@ void Gui::DrawGraph()
     auto draw_list = ImGui::GetWindowDrawList();
 
     // Draw nodes
-
     for (auto& [node_id, wrapper] : nodes) {
         auto& node = wrapper.node;
         ++num_traversed;
@@ -257,16 +256,18 @@ void Gui::DrawGraph()
         auto& nodePins = pins.node_to_pins.at(node_id);
         for (uint32_t inputIdx = 0; inputIdx < nodePins.inputs.size(); ++inputIdx) {
             pin_id_t pinId = nodePins.inputs.at(inputIdx);
-            uint32_t componentIdx = node->GetInputByIndex(inputIdx)->componentIdx;
+            auto input = node->GetInputByIndex(inputIdx);
+            uint32_t componentIdx = input->componentIdx;
             const auto& component = node->GetLayout().GetComponent(componentIdx);
-            m_ui->AddPin(pinId, PinKind::kIn, component.Rect());
+            m_ui->AddPin(input->name.c_str(), pinId, PinKind::kIn, component.Rect(), input->IsConnected());
         }
 
         for (uint32_t outputIdx = 0; outputIdx < nodePins.outputs.size(); ++outputIdx) {
             pin_id_t pinId = nodePins.outputs.at(outputIdx);
-            uint32_t componentIdx = node->GetOutputByIndex(outputIdx)->componentIdx;
+            auto output = node->GetOutputByIndex(outputIdx);
+            uint32_t componentIdx = output->componentIdx;
             const auto& component = node->GetLayout().GetComponent(componentIdx);
-            m_ui->AddPin(pinId, PinKind::kOut, component.Rect());
+            m_ui->AddPin(output->name.c_str(), pinId, PinKind::kOut, component.Rect(), true);
         }
 
         m_ui->EndNode();

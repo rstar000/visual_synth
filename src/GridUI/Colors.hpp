@@ -1,5 +1,6 @@
 #pragma once
 #include "imgui.h"
+#include <vector>
 
 using ColorRGBA = ImU32;
 
@@ -41,13 +42,21 @@ struct ColorScheme
     struct WidgetColors {
         ColorRGBA primary;
         ColorRGBA secondary;
+        ColorRGBA background;
         ColorRGBA text;
     };
 
     PinColors pinColors;
     GridColors gridColors;
     NodeColors nodeColors;
-    WidgetColors widgetColors;
+
+    WidgetColors inactive;
+    WidgetColors selection;
+    WidgetColors range;
+    WidgetColors display;
+    WidgetColors hovered;
+
+    std::vector<WidgetColors> pallette;
 
     static ColorScheme GenerateDefault();
 };

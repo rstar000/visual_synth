@@ -21,6 +21,7 @@ set(HEADERS
     "src/sync.h"
     "src/Param.hpp"
     "src/file_menu.h"
+    "src/Filters/BiQuad.hpp"
     "src/GUI/PatchBrowser.hpp"
     "src/GridUI/Widgets/Checkbox.hpp"
     "src/GridUI/Widgets/Controls.hpp"
@@ -41,6 +42,7 @@ set(HEADERS
     "src/nodes/seq.h"
     "src/nodes/sink.h"
     "src/nodes/Sequencer.hpp"
+    "src/nodes/Filter.hpp"
     "external/imgui/imgui.h"
 )
 
@@ -51,6 +53,7 @@ set(SOURCES
     "src/multigraph.cpp"
     "src/node_factory.cpp"
     "src/gui.cpp"
+    "src/Filters/BiQuad.cpp"
     "src/GridUI/GridUI.cpp"
     "src/GridUI/Colors.cpp"
     "src/GridUI/Widgets/Checkbox.cpp"

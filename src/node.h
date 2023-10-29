@@ -27,9 +27,14 @@ struct NodeParams {
     PlaybackContext* playback;
 };
 
-enum class PinDataType { kInt, kFloat, kTimestamp, kChannel };
+struct Signal {
+    float left;
+    float right;
+};
 
-using PinData = std::variant<int, float, std::size_t, Channel>;
+enum class PinDataType { kInt, kFloat, kTimestamp, kChannel, kSignal };
+
+using PinData = std::variant<int, float, std::size_t, Channel, Signal>;
 
 class Node;
 // Nodes are owned by the graph
@@ -162,10 +167,15 @@ class Node {
     virtual void Preprocess(float time) {};
     virtual void Process(float time) = 0;
     virtual void Draw() {}
+    virtual void DrawContextMenu() {}
 
     template <typename T>
     void AddParam(std::string keyName, T* valuePtr) {
-        m_params.push_back(std::make_shared<Param<T>>(keyName, valuePtr));
+        if constexpr (is_std_array<T>::value) {
+            m_params.push_back(std::make_shared<ArrayParam<T>>(keyName, valuePtr));
+        } else {
+            m_params.push_back(std::make_shared<Param<T>>(keyName, valuePtr));
+        }
     }
 
     virtual void Load(const nlohmann::json& j) {

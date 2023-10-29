@@ -106,28 +106,30 @@ struct ADSRNode : public Node {
     }
 
     void Draw() override {
-        m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.attackKnob),
-                                [this](ImRect dst) {
-                                    DrawKnob("Attack", dst, m_attack, 0.0f,
-                                             2.0f, 0.1f, "%.2f", true);
-                                });
-
-        m_ctx.ui->DrawComponent(
-            m_layout->GetComponent(m_indices.decayKnob), [this](ImRect dst) {
-                DrawKnob("Decay", dst, m_decay, 0.0f, 2.0f, 0.1f, "%.2f", true);
+        GridUI& ui = *m_ctx.ui;
+        ui.BeginComponent(m_layout->GetComponent(m_indices.attackKnob));
+            DrawKnob(ui, "Attack", &m_attack, KnobParams<float>{
+                .minValue = 0.0f, .maxValue = 2.0f, .defaultValue = 0.1f, .format = "%.2f" 
             });
+        ui.EndComponent();
 
-        m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.sustainKnob),
-                                [this](ImRect dst) {
-                                    DrawKnob("Sustain", dst, m_sustain, 0.0f,
-                                             1.0f, 0.5f, "%.2f", true);
-                                });
+        ui.BeginComponent(m_layout->GetComponent(m_indices.decayKnob));
+            DrawKnob(ui, "Decay", &m_decay, KnobParams<float>{
+                .minValue = 0.0f, .maxValue = 2.0f, .defaultValue = 0.5f, .format = "%.2f" 
+            });
+        ui.EndComponent();
 
-        m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.releaseKnob),
-                                [this](ImRect dst) {
-                                    DrawKnob("Release", dst, m_release, 0.0f,
-                                             2.0f, 0.1f, "%.2f", true);
-                                });
+        ui.BeginComponent(m_layout->GetComponent(m_indices.sustainKnob));
+            DrawKnob(ui, "Sustain", &m_sustain, KnobParams<float>{
+                .minValue = 0.0f, .maxValue = 0.1f, .defaultValue = 0.5f, .format = "%.2f" 
+            });
+        ui.EndComponent();
+
+        ui.BeginComponent(m_layout->GetComponent(m_indices.releaseKnob));
+            DrawKnob(ui, "Release", &m_release, KnobParams<float>{
+                .minValue = 0.0f, .maxValue = 2.0f, .defaultValue = 0.1f, .format = "%.2f" 
+            });
+        ui.EndComponent();
     }
 
    private:

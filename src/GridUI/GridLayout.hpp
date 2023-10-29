@@ -12,8 +12,9 @@
 #include "util.h"
 
 struct GridComponent {
-    GridComponent(ImRect baseRect)
-        : m_baseRect{baseRect},
+    GridComponent(uint32_t componentIndex, ImRect baseRect)
+        : m_index{componentIndex},
+          m_baseRect{baseRect},
           m_size{baseRect.GetSize()},
           m_center{baseRect.GetCenter()} {}
 
@@ -23,21 +24,24 @@ struct GridComponent {
 
     const ImVec2& Center() const { return m_center; }
 
+    uint32_t GetIndex() const { return m_index; }
+
     GridComponent Scale(ImVec2 scale) const {
         ImRect rect = Rect();
         rect.Min *= scale;
         rect.Max *= scale;
-        return GridComponent(rect);
+        return GridComponent(m_index, rect);
     }
 
     GridComponent Pad(float top, float right, float bottom, float left) const {
         ImRect rect = Rect();
         rect.Min += ImVec2{left, top};
         rect.Max -= ImVec2{right, bottom};
-        return GridComponent(rect);
+        return GridComponent(m_index, rect);
     }
 
    private:
+    uint32_t m_index{};
     ImRect m_baseRect;
     ImVec2 m_size;
     ImVec2 m_center;
@@ -82,7 +86,7 @@ struct GridLayout {
         return GridLayout(mapped);
     }
 
-    std::vector<GridComponent> m_baseComponents;
+    std::vector<GridComponent> m_baseComponents{};
 };
 
 inline ImVec4 operator*(const ImVec4& v, float t) {
@@ -294,12 +298,14 @@ class GridLayoutBuilder {
             TreeNode* frontElem = traversal.top();
             traversal.pop();
             if (frontElem->isFinal) {
+                uint32_t componentIdx = numElements - result.size() - 1;
                 if (frontElem->indexPtr) {
                     // The index should be inverted because we do reverse later
-                    *(frontElem->indexPtr) = numElements - result.size() - 1;
+                    *(frontElem->indexPtr) = componentIdx;
                 }
-                result.push_back(ImRect{frontElem->origin,
-                                        frontElem->origin + frontElem->size});
+                result.push_back(GridComponent(componentIdx, 
+                                 ImRect{frontElem->origin,
+                                        frontElem->origin + frontElem->size}));
             } else {
                 for (auto& subElem : frontElem->subElements) {
                     traversal.push(&subElem);

@@ -1,5 +1,6 @@
 #include "node_factory.h"
 
+#include "nodes/Filter.hpp"
 #include "nodes/common.h"
 #include "nodes/env.h"
 #include "nodes/osc.h"
@@ -52,6 +53,7 @@ void NodeFactory::RegisterNodes() {
 
     // Debug
     RegisterNode<DebugNode>(NodeCategory::DEBUG);
+    RegisterNode<BiquadFilterNode>(NodeCategory::DEBUG);
 
     // Sequencer
     RegisterNode<ClockNode>(NodeCategory::SEQUENCER);
