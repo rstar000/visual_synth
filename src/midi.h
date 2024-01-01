@@ -28,7 +28,7 @@ class MidiInput {
 
    private:
     uint32_t m_activeDevice = 0;
-   
+
     std::unique_ptr<RtMidiIn> m_midiInput;
     std::vector<MidiDeviceEntry> m_devices;
 

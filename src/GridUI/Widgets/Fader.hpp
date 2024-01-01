@@ -97,11 +97,9 @@ inline bool VFader(GridUI const& ui, const char* label, ImGuiDataType data_type,
     return value_changed;
 }
 
-inline bool VFaderRect(GridUI const& ui, const char* label, float* p_data, FaderRectParams params)
+inline bool VFaderRectEx(ImVec2 const size, ColorScheme const& colors, const char* label, float* p_data, FaderRectParams params)
 {
     ImGuiWindow* window = GetCurrentWindow();
-    ImRect const& dst = ui.GetComponentRect();
-    ColorScheme const& colors = ui.GetColorScheme();
 
     ImU32 frameBgHovered = colors.hovered.secondary;
     ImU32 frameBgActive = colors.hovered.primary;
@@ -117,7 +115,8 @@ inline bool VFaderRect(GridUI const& ui, const char* label, float* p_data, Fader
     if (window->SkipItems)
         return false;
 
-    ImGui::SetCursorScreenPos(dst.Min);
+    ImVec2 const origin = ImGui::GetCursorScreenPos();
+    ImRect const dst = {origin, origin + size};
 
     ImGui::InvisibleButton(label, dst.GetSize());
     auto gid = ImGui::GetID(label);
@@ -133,7 +132,7 @@ inline bool VFaderRect(GridUI const& ui, const char* label, float* p_data, Fader
     ImGuiContext& g = *GImGui;
     const ImGuiID id = window->GetID(label);
 
-    const ImRect frame_bb = dst;
+    ImRect const& frame_bb = dst;
     float value_frac = std::clamp((*p_data - params.minValue) / (params.maxValue - params.minValue), 0.0f, 1.0f);
     float value_pos = (1.0f - value_frac) * dst.GetHeight();
 
@@ -148,6 +147,19 @@ inline bool VFaderRect(GridUI const& ui, const char* label, float* p_data, Fader
     if (is_active || is_hovered)
         ImGui::SetTooltip("%.3f", *p_data);
     return value_changed;
+}
+
+inline bool VFaderRect(GridUI const& ui, const char* label, float* p_data, FaderRectParams params)
+{
+    ImGuiWindow* window = GetCurrentWindow();
+    ImRect const& dst = ui.GetComponentRect();
+    ColorScheme const& colors = ui.GetColorScheme();
+
+    if (window->SkipItems)
+        return false;
+
+    ImGui::SetCursorScreenPos(dst.Min);
+    return VFaderRectEx(dst.GetSize(), colors, label, p_data, params);
 }
 
 }

@@ -15,8 +15,8 @@
 struct ProgramArguments {
     std::string filename;
     std::string patchDir;
-    int numVoices;
-    int numSamples;
+    uint32_t numVoices;
+    uint32_t numSamples;
 };
 
 void ParseArguments(int argc, char** const argv, ProgramArguments* dstArgs) {
@@ -52,11 +52,11 @@ int main(int argc, char** argv) {
     };
 
     auto synth = std::make_unique<Synth>(params);
-    
+ 
     if (!args.filename.empty()) {
         synth->GetIO()->LoadFile(args.filename);
     }
-    
+
     synth->GetFactory()->DumpNodes("nodes.json");
 
     auto midi_input = std::make_unique<MidiInput>(synth->GetTracker());

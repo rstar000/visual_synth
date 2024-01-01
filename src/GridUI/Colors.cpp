@@ -142,6 +142,9 @@ ColorScheme ColorScheme::GenerateDefault() {
     const ColorRGB GREEN_2 = ColorHexToRGB("50B99A");
     const ColorRGB PURPLE_1 = ColorHexToRGB("7366A3");
 
+    const ColorRGB DARKBLUE_1 = ColorHexToRGB("16161E");
+    const ColorRGB DARKBLUE_2 = ColorHexToRGB("1A1B26");
+
     ColorScheme colors;
     auto palette = GenPaletteRainbow();
     colors.pinColors.fill = ColorScheme::ColorStates {
@@ -157,7 +160,7 @@ ColorScheme ColorScheme::GenerateDefault() {
     };
 
     colors.gridColors = {
-        .background = GenGrey(0),
+        .background = RgbToRgba(DARKBLUE_1),
         .line = GenGrey(30),
         .lineAxis = GenGrey(100)
     };
@@ -174,7 +177,7 @@ ColorScheme ColorScheme::GenerateDefault() {
         .selected = RgbToRgba(RED_1),
     };
 
-    colors.nodeColors.background = RgbToRgba(DARK_GREY_1);
+    colors.nodeColors.background = RgbToRgba(DARKBLUE_2);
 
     colors.selection = ColorScheme::WidgetColors {
         .primary = RgbToRgba(RED_1),
@@ -203,6 +206,101 @@ ColorScheme ColorScheme::GenerateDefault() {
     colors.inactive = ColorScheme::WidgetColors {
         .primary   = RgbToRgba(AdjustBrightness(LIGHT_GREY_1, 0.0f)),
         .secondary  = RgbToRgba(AdjustBrightness(LIGHT_GREY_2, 0.0f)),
+        .text   = GenGrey(220)
+    };
+    return colors;
+}
+
+ColorScheme ColorScheme::GenerateGruvbox() {
+    const ColorRGB BG_0 = ColorHexToRGB("282828");
+    const ColorRGB BG_1 = ColorHexToRGB("3C3836");
+    const ColorRGB BG_2 = ColorHexToRGB("504945");
+    const ColorRGB BG_3 = ColorHexToRGB("665C54");
+
+    const ColorRGB FG_0 = ColorHexToRGB("FBF1C7");
+    const ColorRGB FG_1 = ColorHexToRGB("EBDBB2");
+    const ColorRGB FG_2 = ColorHexToRGB("D5C4A1");
+    const ColorRGB FG_3 = ColorHexToRGB("BDAE93");
+
+    const ColorRGB RED_1 = ColorHexToRGB("CC241D");
+    const ColorRGB RED_2 = ColorHexToRGB("FB4934");
+    const ColorRGB YELLOW_1 = ColorHexToRGB("D79921");
+    const ColorRGB YELLOW_2 = ColorHexToRGB("FABD2F");
+    const ColorRGB ORANGE_1 = ColorHexToRGB("D65D0E");
+    const ColorRGB ORANGE_2 = ColorHexToRGB("FE8019");
+    const ColorRGB GREEN_1 = ColorHexToRGB("98971A");
+    const ColorRGB GREEN_2 = ColorHexToRGB("B8BB26");
+    const ColorRGB BLUE_1 = ColorHexToRGB("458588");
+    const ColorRGB BLUE_2 = ColorHexToRGB("83A598");
+    const ColorRGB PURPLE_1 = ColorHexToRGB("B16286");
+    const ColorRGB PURPLE_2 = ColorHexToRGB("D3869B");
+    const ColorRGB AQUA_1 = ColorHexToRGB("689D6A");
+    const ColorRGB AQUA_2 = ColorHexToRGB("8EC07C");
+
+
+    ColorScheme colors;
+    auto palette = GenPaletteRainbow();
+    colors.pinColors.fill = ColorScheme::ColorStates {
+        .normal = RgbToRgba(FG_3),
+        .hovered =  RgbToRgba(ORANGE_1),
+        .selected = RgbToRgba(RED_1)
+    };
+
+    colors.pinColors.border = ColorScheme::ColorStates {
+        .normal   = RgbToRgba(YELLOW_2),
+        .hovered  = RgbToRgba(ORANGE_2),
+        .selected = RgbToRgba(RED_2)
+    };
+
+    colors.gridColors = {
+        .background = RgbToRgba(BG_0),
+        .line = RgbToRgba(BG_1),
+        .lineAxis = RgbToRgba(BG_3)
+    };
+
+    colors.nodeColors.titleBar = {
+        .normal   = RgbToRgba(BG_3),
+        .hovered  = RgbToRgba(BG_3),
+        .selected = RgbToRgba(RED_1),
+    };
+
+    colors.nodeColors.border = {
+        .normal   = RgbToRgba(BG_3),
+        .hovered  = RgbToRgba(BG_3),
+        .selected = RgbToRgba(RED_1),
+    };
+
+    colors.nodeColors.background = RgbToRgba(BG_1);
+
+    colors.selection = ColorScheme::WidgetColors {
+        .primary = RgbToRgba(RED_1),
+        .secondary   = RgbToRgba(RED_2),
+        .background = RgbToRgba(BG_3),
+        .text   = RgbToRgba(FG_0)
+    };
+
+    colors.range = ColorScheme::WidgetColors {
+        .primary = RgbToRgba(GREEN_1),
+        .secondary   = RgbToRgba(GREEN_2),
+        .text   = GenGrey(220)
+    };
+
+    colors.display = ColorScheme::WidgetColors {
+        .primary = RgbToRgba(PURPLE_1),
+        .secondary   = RgbToRgba(PURPLE_2),
+        .background = RgbToRgba(BG_2),
+        .text   = RgbToRgba(FG_0)
+    };
+
+    colors.hovered = ColorScheme::WidgetColors {
+        .primary   = RgbToRgba(YELLOW_2),
+        .secondary  = RgbToRgba(ORANGE_2),
+        .text   = GenGrey(220)
+    };
+
+    colors.inactive = ColorScheme::WidgetColors {
+        .primary   = RgbToRgba(AdjustBrightness(PURPLE_1, 0.0f)),
+        .secondary  = RgbToRgba(AdjustBrightness(PURPLE_2, 0.0f)),
         .text   = GenGrey(220)
     };
     return colors;

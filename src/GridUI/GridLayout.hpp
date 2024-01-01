@@ -14,9 +14,9 @@
 struct GridComponent {
     GridComponent(uint32_t componentIndex, ImRect baseRect)
         : m_index{componentIndex},
-          m_baseRect{baseRect},
-          m_size{baseRect.GetSize()},
-          m_center{baseRect.GetCenter()} {}
+        m_baseRect{baseRect},
+        m_size{baseRect.GetSize()},
+        m_center{baseRect.GetCenter()} {}
 
     const ImRect& Rect() const { return m_baseRect; }
 
@@ -40,7 +40,7 @@ struct GridComponent {
         return GridComponent(m_index, rect);
     }
 
-   private:
+private:
     uint32_t m_index{};
     ImRect m_baseRect;
     ImVec2 m_size;
@@ -49,7 +49,7 @@ struct GridComponent {
 
 struct GridLayout {
     GridLayout(std::span<GridComponent> components)
-        : m_baseComponents(components.begin(), components.end()) {}
+    : m_baseComponents(components.begin(), components.end()) {}
 
     const GridComponent& GetComponent(size_t index) const {
         return m_baseComponents.at(index);
@@ -76,7 +76,7 @@ struct GridLayout {
         });
     }
 
-   private:
+private:
     GridLayout _Map(auto componentFunc) {
         std::vector<GridComponent> mapped;
         mapped.reserve(m_baseComponents.size());
@@ -137,14 +137,14 @@ class GridLayoutBuilder {
     std::deque<Op> m_ops;
     ImVec2 m_shape;
 
-   public:
+public:
     GridLayoutBuilder(ImVec2 shape) : m_shape{shape} {}
     GridLayoutBuilder() : m_shape{ImVec2{1.0f, 1.0f}} {}
 
     GridLayoutBuilder& AddRows(int numRows) {
         m_ops.push_back(SplitOp{.count = numRows,
-                                .weights = MakeUniformWeights(numRows),
-                                .horizontal = false});
+            .weights = MakeUniformWeights(numRows),
+            .horizontal = false});
         return *this;
     }
 
@@ -159,8 +159,8 @@ class GridLayoutBuilder {
 
     GridLayoutBuilder& AddColumns(int numColumns) {
         m_ops.push_back(SplitOp{.count = numColumns,
-                                .weights = MakeUniformWeights(numColumns),
-                                .horizontal = true});
+            .weights = MakeUniformWeights(numColumns),
+            .horizontal = true});
         return *this;
     }
 
@@ -180,8 +180,8 @@ class GridLayoutBuilder {
         } else {
             m_ops.push_back(
                 GetIndexOp{.ptr = idxPtr,
-                           .child = true,
-                           .childIdx = static_cast<uint32_t>(childIdx)});
+                    .child = true,
+                    .childIdx = static_cast<uint32_t>(childIdx)});
         }
         return *this;
     }
@@ -238,7 +238,7 @@ class GridLayoutBuilder {
                     for (int i = 0; i < op.count; ++i) {
                         if (op.horizontal) {
                             float newWidth = current->size.x *
-                                             op.weights.at(i) / totalWeight;
+                                op.weights.at(i) / totalWeight;
                             float newHeight = current->size.y;
                             current->subElements.at(i) =
                                 TreeNode(origin, ImVec2(newWidth, newHeight));
@@ -246,7 +246,7 @@ class GridLayoutBuilder {
                         } else {
                             float newWidth = current->size.x;
                             float newHeight = current->size.y *
-                                              op.weights.at(i) / totalWeight;
+                                op.weights.at(i) / totalWeight;
                             current->subElements.at(i) =
                                 TreeNode(origin, ImVec2(newWidth, newHeight));
                             origin.y += newHeight;
@@ -304,8 +304,8 @@ class GridLayoutBuilder {
                     *(frontElem->indexPtr) = componentIdx;
                 }
                 result.push_back(GridComponent(componentIdx, 
-                                 ImRect{frontElem->origin,
-                                        frontElem->origin + frontElem->size}));
+                                               ImRect{frontElem->origin,
+                                               frontElem->origin + frontElem->size}));
             } else {
                 for (auto& subElem : frontElem->subElements) {
                     traversal.push(&subElem);

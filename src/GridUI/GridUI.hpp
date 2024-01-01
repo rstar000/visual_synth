@@ -97,7 +97,7 @@ class GridUI
           enableGrid{true},
           enableContextMenu{true},
           enableDebugLayout{false},
-          m_colors{ColorScheme::GenerateDefault()} {}
+          m_colors{ColorScheme::GenerateGruvbox()} {}
 
     void CanvasEnd() {
         ImDrawList* draw_list = ImGui::GetWindowDrawList();

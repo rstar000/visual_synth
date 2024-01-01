@@ -30,9 +30,10 @@ struct Synth {
                 .sampleIdx = 0,
                 .numSamples = params.numSamples,
                 .numVoices = params.numVoices,
-                .sampleRate = kSampleRate
-            }
-        );
+                .sampleRate = kSampleRate,
+                .bpm = 100.0f,
+                .isPlaying = true
+            });
         m_factory = std::make_unique<NodeFactory>(
             NodeParams{
                 .writer = m_writer.get(),
@@ -60,13 +61,16 @@ struct Synth {
 
     GridUI* GetGridUI() const { return m_gridUI.get(); }
 
-    void ProcessFrame(SampleType* buffer) {
+    void ProcessFrame(SampleType* buffer, size_t numSamples) {
         auto access = m_multigraph->GetAccess();
         auto& nodes = access->GetSortedNodes();
 
         m_writer->SetBuffer(buffer);
+        if (!m_playback->isPlaying) {
+            return;
+        }
 
-        for (size_t frameSampleId = 0; frameSampleId < m_playback->numSamples; ++frameSampleId) {
+        for (size_t frameSampleId = 0; frameSampleId < numSamples; ++frameSampleId) {
             m_playback->timestamp = m_writer->GetTimestamp(frameSampleId);
             m_playback->sampleIdx = m_writer->GetSample(frameSampleId);
             for (auto& node : nodes) {

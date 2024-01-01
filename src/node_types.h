@@ -30,6 +30,7 @@
        X(MONO_SEQUENCER) \
        X(MIX) \
        X(BIQUAD_FILTER) \
+       X(LFO) \
 
 enum class NodeType {
 #define X(v)       v,

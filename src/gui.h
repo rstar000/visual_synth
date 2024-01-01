@@ -9,6 +9,7 @@
 #include <thread>
 
 #include "GUI/PatchBrowser.hpp"
+#include "Sequencers/PolySeq.hpp"
 #include "file_menu.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl2.h"
@@ -18,6 +19,7 @@
 #include "note.h"
 #include "synth.h"
 #include "util.h"
+#include "writer.h"
 
 class Gui {
    public:
@@ -70,6 +72,7 @@ class Gui {
     PatchBrowser m_patchBrowser;
 
     GridUI* m_ui;
+    PlaybackContext* m_playback;
 
     bool show_demo_window = true;
     bool show_another_window = false;
@@ -79,4 +82,6 @@ class Gui {
     bool _running = false;
 
     bool m_showMidiSettings = false;
+
+    PolySequencer m_polySeq;
 };

@@ -25,7 +25,8 @@ struct Note {
 
     static float ComputeFrequency(int octave, int half_steps) {
         float octave_base = kA440 * std::pow(2.0f, octave);
-        return octave_base * (std::pow(kFrequencyMultiplier, half_steps));
+        // Offset between C and A is 10 semitones
+        return octave_base * (std::pow(kFrequencyMultiplier, half_steps - 10));
     }
 };
 
@@ -47,7 +48,7 @@ struct Octave {
         auto names = GetNames();
         for (int step = 0; step < kHalfStepsPerOctave; ++step) {
             // Base is A, start octave at C.
-            notes_.emplace_back(idx, step - 10);
+            notes_.emplace_back(idx, step);
             codes_[names[step]] = step;
         }
     }
@@ -82,11 +83,13 @@ struct NoteLookup {
         std::string name;
         Note note;
     };
-    static constexpr size_t NUM_OCTAVES = 6;
+    static constexpr size_t NUM_OCTAVES = 8;
 
     NoteLookup() {
         auto names = Octave::GetNames();
+        m_octaveOffset.resize(NUM_OCTAVES);
         for (int octaveIdx = 0; octaveIdx < NUM_OCTAVES; ++octaveIdx) {
+            m_octaveOffset.push_back(m_notes.size());
             Octave oct(octaveIdx - 4);
             for (size_t noteIdx = 0; noteIdx < Octave::NUM_NOTES; ++noteIdx) {
                 std::string noteName = string_format("%s%d", names.at(noteIdx).c_str(), octaveIdx);
@@ -107,7 +110,9 @@ struct NoteLookup {
         return m_notes.size();
     }
 
+private:
     std::vector<NoteDesc> m_notes;
+    std::vector<uint32_t> m_octaveOffset;
 };
 
 struct MidiNote {

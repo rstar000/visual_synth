@@ -8,46 +8,87 @@
 #include "node.h"
 #include "node_types.h"
 #include "GridUI/Widgets/Knob.hpp"
+#include "GridUI/Widgets/TextInput.hpp"
 
 struct SliderNode : public Node {
     static inline const std::string DISPLAY_NAME = "Slider";
     static inline const NodeType TYPE = NodeType::SLIDER;
 
+    struct ComponentIndices 
+    {
+        uint32_t valueKnob;
+        uint32_t minValueBox;
+        uint32_t maxValueBox;
+        uint32_t valueDisplay;
+        uint32_t valueOutput;
+    };
+
     SliderNode(const NodeParams& ctx) : Node(ctx) {
         type = TYPE;
         display_name = DISPLAY_NAME;
 
-        AddOutput("signal", PinDataType::kFloat, 0.0f);
+        m_shape = ImVec2(2, 2);
+
+        m_layout =
+            std::make_unique<GridLayout>(
+            GridLayoutBuilder()
+            .AddColumnsEx(3, {0.5f, 2.0f, 0.5f})
+            .GetIndex(&m_indices.valueOutput, 2)
+            .Push(1)
+                .AddRowsEx(2, {2, 1})
+                .GetIndex(&m_indices.valueKnob, 0)
+                .Push(1)
+                    .AddColumns(3)
+                    .GetIndex(&m_indices.minValueBox, 0)
+                    .GetIndex(&m_indices.valueDisplay, 1)
+                    .GetIndex(&m_indices.maxValueBox, 2)
+                .Pop()
+            .Pop()
+            .Build());
+
+        m_buf.resize(16);
+
+        AddOutput("value", PinDataType::kFloat, 0.0f, m_indices.valueOutput);
+        AddParam("min_value", &m_minmax[0]);
+        AddParam("max_value", &m_minmax[1]);
+        AddParam("knob_value", &m_knobValue);
     }
 
     ~SliderNode() {}
 
-    void Process(float time) override { SetOutputValue<float>(0, signal); }
+    void Process(float time) override { 
+        SetOutputValue<float>(0, CalcValue()); 
+    }
 
     void Draw() override {
-        ImGui::PushItemWidth(100.0f);
-        ImGui::SliderFloat("Slider", &signal, v_min_max[0],
-                           v_min_max[1], "%.2f", ImGuiSliderFlags_None);
-        ImGui::InputFloat2("Input", v_min_max.data(), "%.2f",
-                           ImGuiInputTextFlags_None);
-        ImGui::PopItemWidth();
+        GridUI& ui = *m_ctx.ui;
+        float v = CalcValue();
+        std::snprintf(m_buf.data(), m_buf.size(), "%0.3f", v);
+        ui.BeginComponent(m_layout->GetComponent(m_indices.valueKnob));
+            DrawKnob(ui, "Value", &m_knobValue, KnobParams<float>{
+                .minValue = 0.0f, .maxValue = 1.0f, .defaultValue = 0.5f, .format = m_buf.data() 
+            });
+        ui.EndComponent();
+
+        ui.BeginComponent(m_layout->GetComponent(m_indices.minValueBox));
+            DrawInputFloat(ui, "Min", &m_minmax[0]);
+        ui.EndComponent();
+
+        ui.BeginComponent(m_layout->GetComponent(m_indices.maxValueBox));
+            DrawInputFloat(ui, "Max", &m_minmax[1]);
+        ui.EndComponent();
     }
 
-    void Save(nlohmann::json& j) const override {
-        JsonSetValue(j, "v_min", v_min_max[0]);
-        JsonSetValue(j, "v_max", v_min_max[1]);
-        JsonSetValue(j, "signal", signal);
-    }
-
-    void Load(const nlohmann::json& j) override {
-        JsonGetValue(j, "v_min", v_min_max[0]);
-        JsonGetValue(j, "v_max", v_min_max[1]);
-        JsonGetValue(j, "signal", signal);
+    float CalcValue() const {
+        return m_knobValue * (m_minmax[1] - m_minmax[0]) + m_minmax[0];
     }
 
    protected:
-    float signal;
-    std::array<float, 2> v_min_max;
+    ComponentIndices m_indices;
+    std::array<float, 2> m_minmax;
+    std::vector<char> m_buf;
+    float m_value = 0.0f;
+    float m_knobValue;
 };
 
 struct ConstantNode : public Node {
@@ -74,18 +115,13 @@ struct ConstantNode : public Node {
     void Process(float time) override { SetOutputValue<float>(0, signal); }
 
     void Draw() override {
-        m_ctx.ui->DrawComponent(m_layout->GetComponent(0), [this](ImRect dst) {
-            float offset = ImGui::GetStyle().FramePadding.y + ImGui::GetTextLineHeight() * 0.5f;
-            ImGui::SetCursorScreenPos(ImVec2(dst.Min.x, dst.GetCenter().y - offset));
-            ImGui::PushItemWidth(dst.GetWidth());
-            ImGui::InputFloat("##value", &signal, 0.0f, 0.0f, "%.2f",
-                              ImGuiInputTextFlags_None);
-            ImGui::PopItemWidth();
-        });
+        m_ctx.ui->BeginComponent(m_layout->GetComponent(0));
+        DrawInputFloat(*m_ctx.ui, "", &signal);
+        m_ctx.ui->EndComponent();
     }
 
    protected:
-    float signal;
+    float signal = 0.0f;
 };
 
 struct MixNode : public Node {
@@ -292,7 +328,7 @@ struct RangeShiftNode : public Node {
             GridLayoutBuilder()
                 .AddColumnsEx(3, {0.5, 2, 0.5})
                 .GetIndex(&m_indices.inputX, 0)
-                .GetIndex(&m_indices.inputX, 2)
+                .GetIndex(&m_indices.outputY, 2)
                 .Push(1)
                     .MakeRectGrid(2, 2)
                     .GetIndexXY(0, 0, &m_indices.inputRangeHigh)
@@ -320,38 +356,22 @@ struct RangeShiftNode : public Node {
     }
 
     void Draw() override {
-        auto DrawInputFloat = [this] (ImRect const& dst, float* value) {
-            float offset = ImGui::GetStyle().FramePadding.y + ImGui::GetTextLineHeight() * 0.5f;
-            ImGui::SetCursorScreenPos(ImVec2(dst.Min.x, dst.GetCenter().y - offset));
-            ImGui::PushItemWidth(dst.GetWidth());
-            ImGui::InputFloat("##value", &m_inputRangeLow, 0.1f, 0.5f, "%.2f",
-                              ImGuiInputTextFlags_None);
-            ImGui::PopItemWidth();
-        };
+        auto ui = m_ctx.ui;
+        ui->BeginComponent(m_layout->GetComponent(m_indices.inputRangeLow));
+            DrawInputFloat(*ui, "i_low", &m_inputRangeLow);
+        ui->EndComponent();
 
-        m_ctx.ui->DrawComponent(
-            m_layout->GetComponent(m_indices.inputRangeLow), 
-            [&, this](ImRect dst) {
-                DrawInputFloat(dst, &m_inputRangeLow);
-            });
+        ui->BeginComponent(m_layout->GetComponent(m_indices.inputRangeHigh));
+            DrawInputFloat(*ui, "i_high", &m_inputRangeHigh);
+        ui->EndComponent();
 
-        m_ctx.ui->DrawComponent(
-            m_layout->GetComponent(m_indices.inputRangeHigh), 
-            [&, this](ImRect dst) {
-                DrawInputFloat(dst, &m_inputRangeHigh);
-            });
+        ui->BeginComponent(m_layout->GetComponent(m_indices.outputRangeLow));
+            DrawInputFloat(*ui, "o_low", &m_outputRangeLow);
+        ui->EndComponent();
 
-        m_ctx.ui->DrawComponent(
-            m_layout->GetComponent(m_indices.outputRangeLow), 
-            [&, this](ImRect dst) {
-                DrawInputFloat(dst, &m_outputRangeLow);
-            });
-
-        m_ctx.ui->DrawComponent(
-            m_layout->GetComponent(m_indices.outputRangeHigh), 
-            [&, this](ImRect dst) {
-                DrawInputFloat(dst, &m_outputRangeHigh);
-            });
+        ui->BeginComponent(m_layout->GetComponent(m_indices.outputRangeHigh));
+            DrawInputFloat(*ui, "o_high", &m_outputRangeHigh);
+        ui->EndComponent();
     }
 
   private:
@@ -443,22 +463,27 @@ struct DebugNode : public Node {
         ui.EndComponent();
 
         ui.BeginComponent(m_layout->GetComponent(m_indices.knobVMax));
-            DrawKnob(ui, "Max", &m_limits[0], KnobParams<float>{
+            DrawKnob(ui, "Max", &m_limits[1], KnobParams<float>{
                 .minValue = -10.0f, .maxValue = 10.0f, .defaultValue = 1.0f, .format = "%.2f" 
             });
         ui.EndComponent();
 
         ui.BeginComponent(m_layout->GetComponent(m_indices.knobResolution));
-            DrawKnob(ui, "Resolution", &m_limits[0], KnobParams<float>{
+            DrawKnob(ui, "Resolution", &m_resolution, KnobParams<float>{
                 .minValue = -10.0f, .maxValue = 10.0f, .defaultValue = 0.01f, .format = "%.2f" 
             });
         ui.EndComponent();
 
         m_ctx.ui->DrawComponent(m_layout->GetComponent(m_indices.display), [this](ImRect dst) {
+            auto& colors = m_ctx.ui->GetColorScheme();
             ImGui::SetCursorScreenPos(dst.Min);
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, colors.display.background);
+            ImGui::PushStyleColor(ImGuiCol_PlotLines, colors.display.primary);
             ImGui::PlotLines("##Plot", values.data(), NUM_DEBUG_VALUES,
                             cur_idx, NULL, m_limits[0], m_limits[1],
                             dst.GetSize());
+
+            ImGui::PopStyleColor(2);
 
             ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(0,0,0,0));
             const static ImU32 PLOT_COLORS[4] = {
@@ -476,7 +501,6 @@ struct DebugNode : public Node {
                 ImGui::PopStyleColor();
             }
             ImGui::PopStyleColor();
-
         });
     }
 
@@ -492,3 +516,4 @@ struct DebugNode : public Node {
     ComponentIndices m_indices;
     uint32_t sampleIdx;
 };
+

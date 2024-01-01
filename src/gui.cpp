@@ -1,5 +1,5 @@
 #include "gui.h"
-// #include "portable-file-dialogs.h"
+#include "imgui.h"
 #include "misc/freetype/imgui_freetype.h"
 
 Gui::Gui(Synth& synth, MidiInput& midi)
@@ -8,7 +8,10 @@ Gui::Gui(Synth& synth, MidiInput& midi)
       key_input(m_synth->GetTracker()),
       file_menu(m_synth->GetIO()),
       m_patchBrowser(m_synth->GetIO()),
-      m_ui(m_synth->GetGridUI()) {
+      m_ui(m_synth->GetGridUI()),
+      m_playback(m_synth->GetPlayback()),
+      m_polySeq(2)
+{
     InitWindow();
 }
 
@@ -193,6 +196,25 @@ void Gui::DrawMainMenu()
             ImGui::MenuItem("MIDI settings", NULL, &m_showMidiSettings);
             ImGui::EndMenu();
         }
+
+        if (ImGui::Button(m_playback->isPlaying ? "||" : "|>")) {
+            m_playback->isPlaying = !m_playback->isPlaying;
+        }
+        ImGui::SameLine();
+
+        if (ImGui::Button("Reset")) {
+            m_synth->GetWriter()->Reset();
+            m_playback->timestamp = 0.0f;
+            m_playback->sampleIdx = 0;
+        }
+
+        ImGui::SameLine();
+        ImGui::PushItemWidth(100.0f);
+        ImGui::InputFloat("BPM", &m_playback->bpm, 0.0f, 0.0f);
+
+        ImGui::SameLine();
+        ImGui::Text("%0.3f", m_playback->timestamp);
+        ImGui::PopItemWidth();
         ImGui::EndMenuBar();
     }
 }
@@ -303,9 +325,10 @@ void Gui::DrawSidebar()
             m_patchBrowser.Draw();
             ImGui::EndTabItem();
         }
-        if (ImGui::BeginTabItem("Details"))
+
+        if (ImGui::BeginTabItem("Sequence Editor"))
         {
-            ImGui::Text("ID: 0123456789");
+            m_polySeq.DrawEditor();
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();

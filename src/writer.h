@@ -24,6 +24,8 @@ struct PlaybackContext
     const uint32_t numSamples;
     const uint32_t numVoices;
     const uint32_t sampleRate;
+    float bpm;
+    bool isPlaying;
 };
 
 class SampleWriter {
@@ -44,6 +46,10 @@ class SampleWriter {
     void Write(float wave, int sample_idx) {
         auto sample = WaveToSample(wave);
         m_ptr[sample_idx] = SafeAdd(m_ptr[sample_idx], sample);
+    }
+
+    void Reset() {
+        m_frameBeginIdx = 0;
     }
 
     void Flush(int num_samples) { m_frameBeginIdx += num_samples; }

@@ -4,9 +4,9 @@
 #include "GridUI/GridLayout.hpp"
 #include "GridUI/Widgets/Toggle.hpp"
 #include "GridUI/Widgets/Knob.hpp"
+#include "GridUI/Widgets/Checkbox.hpp"
 #include "node.h"
 #include "note.h"
-
 
 struct BiquadFilterNode : public Node {
     static inline const std::string DISPLAY_NAME = "Biquad filter";
@@ -25,6 +25,7 @@ struct BiquadFilterNode : public Node {
         uint32_t resonanceKnob;
         uint32_t gainKnob;
         uint32_t filterTypeToggle;
+        uint32_t doubleCheckbox;
     };
 
     BiquadFilterNode(const NodeParams& ctx) : Node(ctx) {
@@ -43,12 +44,14 @@ struct BiquadFilterNode : public Node {
             builder.GetIndex(&m_indices.signalOutput, 2);
         builder.Push(1)
             .AddRowsEx(2, {0.5f, 1.5f})
-            .GetIndex(&m_indices.filterTypeToggle, 0)
+            .Push(0).AddColumnsEx(2, {3.0f, 1.0f})
+                .GetIndex(&m_indices.filterTypeToggle, 0)
+                .GetIndex(&m_indices.doubleCheckbox, 1)
+            .Pop()
             .Push(1).AddColumns(3)
                 .GetIndex(&m_indices.cutoffKnob, 0)
                 .GetIndex(&m_indices.resonanceKnob, 1)
                 .GetIndex(&m_indices.gainKnob, 2);
-
         m_layout = std::make_unique<GridLayout>(builder.Build());
 
         AddInput("signal", PinDataType::kFloat, 0.0f, m_indices.signalInput);
@@ -67,12 +70,12 @@ struct BiquadFilterNode : public Node {
             .sideMargin = 5.0f
         };
         m_filter.resize(NumVoices());
+        m_filterDouble.resize(NumVoices());
     }
 
     ~BiquadFilterNode() {}
 
-    void Preprocess(float time) override {
-    }
+    void Preprocess(float time) override {}
 
     void Process(float time) override {
         auto& filter = m_filter[GetActiveVoice()];
@@ -83,6 +86,13 @@ struct BiquadFilterNode : public Node {
         filter.setBiquad(m_filterType, cutoff / m_ctx.playback->sampleRate, std::max(m_resonance, 0.1f), m_gain);
         float x = GetInputValue<float>(0);
         x = filter.process(x);
+
+        if (m_double) {
+            auto& filterDouble = m_filterDouble[GetActiveVoice()];
+            filterDouble.setBiquad(m_filterType, cutoff / m_ctx.playback->sampleRate, std::max(m_resonance, 0.1f), m_gain);
+            x = filterDouble.process(x);
+        }
+
         SetOutputValue(0, x);
     }
 
@@ -91,6 +101,10 @@ struct BiquadFilterNode : public Node {
 
         ui.BeginComponent(m_layout->GetComponent(m_indices.filterTypeToggle));
             DrawToggle(ui, "Filter type", &m_filterType, m_filterTypeToggleParams);
+        ui.EndComponent();
+
+        ui.BeginComponent(m_layout->GetComponent(m_indices.doubleCheckbox));
+            DrawCheckbox(ui, "Double", m_double);
         ui.EndComponent();
 
         ui.BeginComponent(m_layout->GetComponent(m_indices.cutoffKnob));
@@ -119,6 +133,9 @@ private:
     float m_resonance = 0.7f;
     float m_gain = 0.0f;
 
+    bool m_double = false;
+
     std::vector<Biquad> m_filter{};
+    std::vector<Biquad> m_filterDouble{};
     ToggleParams m_filterTypeToggleParams{};
 };

@@ -14,6 +14,8 @@
 #include "GridUI/Widgets/Checkbox.hpp"
 #include "GridUI/Widgets/Knob.hpp"
 
+#include "Sequencers/PolySeq.hpp"
+
 // Simple sequencer with single note
 struct MonoSequencer : public Node {
     static inline const std::string DISPLAY_NAME = "Mono sequencer";
@@ -69,7 +71,7 @@ struct MonoSequencer : public Node {
     ~MonoSequencer() {}
 
     void Process(float time) override {
-        float bpm = GetInputValue<float>(0);
+        float bpm = inputs[0]->IsConnected() ? GetInputValueEx<float>(0, 0) : m_ctx.playback->bpm;
         float bps = bpm / 60.0f;
         uint32_t numVoices = NumVoices();
         uint32_t activeVoice = GetActiveVoice();
@@ -322,7 +324,8 @@ struct Arpeggiator : public Node {
     }
 
     void Preprocess(float time) override {
-        float bpm = GetInputValueEx<float>(1, 0);
+        float bpm = inputs[1]->IsConnected() ? GetInputValueEx<float>(1, 0) : m_ctx.playback->bpm;
+
         float bps = bpm / 60.0f;
 
         size_t sampleIdx = m_ctx.playback->sampleIdx;
@@ -417,3 +420,110 @@ private:
     size_t m_updateTimestamp = 0;
 };
 
+
+struct PolySequencerNode : public Node {
+    static inline const std::string DISPLAY_NAME = "PolySequencer";
+    static inline const NodeType TYPE = NodeType::ARPEGGIATOR;
+
+    static constexpr uint32_t NUM_BEATS = 32;
+    static constexpr uint32_t MAX_NUM_CHANNELS = 4;
+    static constexpr uint32_t MAX_NUM_NOTES = 8;
+
+    struct ComponentIndices
+    {
+        uint32_t bpmInput;
+        uint32_t channelOutput;
+        uint32_t stepSizeToggle;
+        uint32_t numStepsKnob;
+        uint32_t indicatorText;
+        std::array<uint32_t, NUM_BEATS * MAX_NUM_CHANNELS> beats;
+    };
+
+    PolySequencerNode(const NodeParams& ctx) 
+        : Node(ctx)
+        , m_seq(MAX_NUM_CHANNELS)
+    {
+        type = TYPE;
+        display_name = DISPLAY_NAME;
+
+        m_shape = ImVec2(9, 4);
+
+        auto builder = GridLayoutBuilder();
+        builder.AddColumnsEx(3, {0.5f, 8.0f, 0.5f});
+        builder.Push(0).AddRows(2);
+            builder.GetIndex(&m_indices.bpmInput, 0);
+        builder.Pop();
+            builder.GetIndex(&m_indices.channelOutput, 2);
+        builder.Push(1).AddRowsEx(2, {1, 3})
+            .Push(0).AddColumnsEx(3, {1, 1, 6})
+                .GetIndex(&m_indices.numStepsKnob, 0)
+                .GetIndex(&m_indices.stepSizeToggle, 1)
+                .GetIndex(&m_indices.indicatorText, 2)
+            .Pop()
+            .Push(1)
+            .MakeRectGrid(NUM_BEATS, MAX_NUM_CHANNELS);
+
+        for (uint32_t x = 0; x < NUM_BEATS; ++x) {
+            for (uint32_t y = 0; y < MAX_NUM_CHANNELS; ++y) {
+                builder.GetIndexXY(x, y, &m_indices.beats[NUM_BEATS * y + x]);
+            }
+        }
+
+        m_layout = std::make_unique<GridLayout>(builder.Build());
+
+        AddInput("bpm", PinDataType::kFloat, 100.0f, m_indices.bpmInput);
+        AddOutput("ch", PinDataType::kChannel, Channel{}, m_indices.channelOutput);
+    }
+
+    ~PolySequencerNode() {}
+
+    void Preprocess(float time) override {
+        float bpm = GetInputValueEx<float>(1, 0);
+        float bps = bpm / 60.0f;
+
+        size_t sampleIdx = m_ctx.playback->sampleIdx;
+        uint32_t beatIdx = static_cast<uint32_t>(bps * time);
+
+        if (beatIdx != m_beatIdx) {
+            float t_begin = time;
+            float t_end = time;
+
+            // Update
+        }
+    }
+
+    void Process(float time) override {
+        /* uint32_t numVoices = NumVoices(); */
+        /* uint32_t activeVoice = GetActiveVoice(); */
+        /**/
+        /* uint32_t numOutputChannels = std::min(NUM_BEATS, numVoices); */
+        /**/
+        /* if (activeVoice >= numOutputChannels) { */
+        /*     Channel ch{ */
+        /*         .note = Note(0, 0), */
+        /*         .begin = time + 100.0f, */
+        /*         .end = time + 200.0f, */
+        /*         .velocity = 0.0f, */
+        /*         .active = false */
+        /*     }; */
+        /**/
+        /*     SetOutputValue<Channel>(0, ch); */
+        /* } else { */
+        /*     SetOutputValue<Channel>(0, m_channelState[activeVoice]); */
+        /* } */
+    }
+
+    void Draw() override {
+        GridUI& ui = *m_ctx.ui;
+        for (uint32_t x = 0; x < NUM_BEATS; ++x) {
+        }
+    }
+
+private:
+    ComponentIndices m_indices;
+    PolySequencer m_seq;
+    uint32_t m_beatIdx = 0;
+    // Beat fields
+    uint32_t m_currentVoice = 0;
+    size_t m_updateTimestamp = 0;
+};

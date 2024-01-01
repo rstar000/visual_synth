@@ -28,6 +28,7 @@ set(HEADERS
     "src/GridUI/Widgets/Fader.hpp"
     "src/GridUI/Widgets/Knob.hpp"
     "src/GridUI/Widgets/Pin.hpp"
+    "src/GridUI/Widgets/TextInput.hpp"
     "src/GridUI/Widgets/Widget.hpp"
     "src/GridUI/Widgets/WidgetUtils.hpp"
     "src/GridUI/Colors.hpp"
@@ -43,6 +44,7 @@ set(HEADERS
     "src/nodes/sink.h"
     "src/nodes/Sequencer.hpp"
     "src/nodes/Filter.hpp"
+    "src/Sequencers/PolySeq.hpp"
     "external/imgui/imgui.h"
 )
 
@@ -60,6 +62,7 @@ set(SOURCES
     "src/GridUI/Widgets/WidgetUtils.cpp"
     "src/Oscillators/Waveform.cpp"
     "src/GUI/PatchBrowser.cpp"
+    "src/Sequencers/PolySeq.cpp"
     external/imgui/imgui.cpp
     external/imgui/imgui_draw.cpp
     external/imgui/imgui_widgets.cpp

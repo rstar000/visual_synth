@@ -7,6 +7,7 @@
 #include "nodes/seq.h"
 #include "nodes/sink.h"
 #include "nodes/Sequencer.hpp"
+#include "nodes/LFO.hpp"
 
 template <typename T>
 void RegisterDisplayName(std::map<NodeType, std::string>& m) {
@@ -35,6 +36,7 @@ void NodeFactory::RegisterNodes() {
     RegisterNode<SineOscillatorNode>(NodeCategory::OCSILLATOR);
     RegisterNode<SquareOscillatorNode>(NodeCategory::OCSILLATOR);
     RegisterNode<SuperOscNode>(NodeCategory::OCSILLATOR);
+    RegisterNode<LFONode>(NodeCategory::OCSILLATOR);
 
     // Utility
     RegisterNode<SliderNode>(NodeCategory::UTILITY);
@@ -53,7 +55,9 @@ void NodeFactory::RegisterNodes() {
 
     // Debug
     RegisterNode<DebugNode>(NodeCategory::DEBUG);
-    RegisterNode<BiquadFilterNode>(NodeCategory::DEBUG);
+
+    // Filter
+    RegisterNode<BiquadFilterNode>(NodeCategory::FILTER);
 
     // Sequencer
     RegisterNode<ClockNode>(NodeCategory::SEQUENCER);

@@ -3,6 +3,7 @@
 #include "multigraph.h"
 #include "synth.h"
 #include "util.h"
+#include "writer.h"
 
 // Actual sound generation happens here, in RtAudio thread
 int callback(void* outputBuffer, void* /*inputBuffer*/,
@@ -16,6 +17,7 @@ int callback(void* outputBuffer, void* /*inputBuffer*/,
 
     SampleType* buf_out = static_cast<SampleType*>(outputBuffer);
     Synth* synth = static_cast<Synth*>(data);
+    PlaybackContext* playback = synth->GetPlayback();
 
     // ASSERT(ctx->buf_size <= nBufferFrames);
 
@@ -25,8 +27,10 @@ int callback(void* outputBuffer, void* /*inputBuffer*/,
 
     std::memset(buf_out, 0, nBufferFrames * sizeof(SampleType));
 
-    synth->ProcessFrame(buf_out);
-    synth->GetWriter()->Flush(nBufferFrames);
+    if (playback->isPlaying) {
+        synth->ProcessFrame(buf_out, nBufferFrames);
+        synth->GetWriter()->Flush(nBufferFrames);
+    }
 
     return 0;
 }

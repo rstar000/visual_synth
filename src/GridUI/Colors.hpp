@@ -59,4 +59,5 @@ struct ColorScheme
     std::vector<WidgetColors> pallette;
 
     static ColorScheme GenerateDefault();
+    static ColorScheme GenerateGruvbox();
 };
