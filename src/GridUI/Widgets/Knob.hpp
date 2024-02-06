@@ -79,3 +79,19 @@ inline bool DrawKnobInt(GridUI const& ui, const char* label, int* v, KnobParams<
     ImGui::PopStyleColor(3);
     return valueChanged;
 }
+
+template <typename ...Args>
+inline bool DrawKnobEx(GridUI& ui, GridComponent const& component, Args ...args) {
+    ui.BeginComponent(component);
+    bool res = DrawKnob(ui, args...);
+    ui.EndComponent();
+    return res;
+}
+
+template <typename ...Args>
+inline bool DrawKnobIntEx(GridUI& ui, GridComponent const& component, Args ...args) {
+    ui.BeginComponent(component);
+    bool res = DrawKnobInt(ui, args...);
+    ui.EndComponent();
+    return res;
+}

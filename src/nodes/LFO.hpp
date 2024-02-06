@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GridUI/GridLayout.hpp"
 #include "node.h"
 #include "output.h"
 
@@ -9,7 +10,6 @@
 
 #include "Oscillators/Common.hpp"
 #include "Oscillators/Waveform.hpp"
-
 
 struct LFONode : public Node
 {
@@ -27,18 +27,13 @@ struct LFONode : public Node
 
     struct ComponentIndices
     {
-        uint32_t ampInput;
-        uint32_t freqInput;
-        uint32_t channelInput;
-        uint32_t signalOutput;
-        uint32_t freqKnob;
-        uint32_t ampKnob;
-        uint32_t phaseKnob;
-        uint32_t retriggerToggle;
-        uint32_t useBPMToggle;
-        uint32_t noteDropdown;
-        uint32_t dottedNoteToggle;
-        uint32_t waveSelect;
+        uint32_t ampInput, freqInput, channelInput, signalOutput, freqKnob, 
+        ampKnob, phaseKnob, retriggerToggle, useBPMToggle, noteDropdown, 
+        dottedNoteToggle, waveSelect;
+    };
+
+    struct IOIndices {
+        uint32_t ampInput, freqInput, channelInput, signalOutput;
     };
 
     LFONode(const NodeParams& ctx) : Node(ctx) {
@@ -50,55 +45,47 @@ struct LFONode : public Node
             GridLayoutBuilder()
                 .AddColumnsEx(3, {0.5, 4, 0.5})
                 .Push(0)
+                    .AddRowsEx(2, {1, 3})
+                    .Push(0)
                     .AddRows(3)
-                    .GetIndex(&m_indices.freqInput, 0)
-                    .GetIndex(&m_indices.ampInput, 1)
-                    .GetIndex(&m_indices.channelInput, 2)
+                    .GetIndexN({&_C.freqInput, &_C.ampInput, &_C.channelInput})
+                    .Pop()
                 .Pop()
                 .Push(1)
                     .AddRows(4)
-                    .GetIndex(&m_indices.waveSelect, 0)
+                    .GetIndex(&_C.waveSelect, 0)
                     .Push(1)
                         .AddColumns(3)
-                        .GetIndex(&m_indices.freqKnob, 0)
-                        .GetIndex(&m_indices.ampKnob, 1)
-                        .GetIndex(&m_indices.phaseKnob, 2)
+                        .GetIndexN({&_C.freqKnob, &_C.ampKnob, &_C.phaseKnob})
                     .Pop()
                     .Push(2)
                         .AddColumns(4)
-                        .GetIndex(&m_indices.retriggerToggle, 0)
-                        .GetIndex(&m_indices.useBPMToggle, 1)
-                        .GetIndex(&m_indices.dottedNoteToggle, 2)
-                        .GetIndex(&m_indices.noteDropdown, 3)
+                        .GetIndexN({&_C.retriggerToggle, &_C.useBPMToggle, &_C.dottedNoteToggle, &_C.noteDropdown})
                     .Pop()
                 .Pop()
-                .GetIndex(&m_indices.signalOutput, 2)
+                .GetIndex(&_C.signalOutput, 2)
                 .Build());
-        AddInput("freq", PinDataType::kFloat, 0.0f, m_indices.freqInput);
-        AddInput("amp", PinDataType::kFloat, 0.0f, m_indices.ampInput);
-        AddInput("channel", PinDataType::kChannel, Channel{}, m_indices.channelInput);
-        AddOutput("signal", PinDataType::kFloat, 0.0f, m_indices.signalOutput);
 
-        AddParam("freq", &m_freq);
-        AddParam("amp", &m_amp);
-        AddParam("phase", &m_phase);
-        AddParam("retrigger", &m_retrigger);
-        AddParam("useBPM", &m_useBPM);
-        AddParam("dotted_note", &m_dottedNote);
-        AddParam("wave_index", &m_waveIndex);
+        _IO.freqInput = AddInput("freq", PinDataType::kFloat, 0.0f, _C.freqInput);
+        _IO.ampInput = AddInput("amp", PinDataType::kFloat, 0.0f, _C.ampInput);
+        _IO.channelInput = AddInput("channel", PinDataType::kChannel, Channel{}, _C.channelInput);
+        _IO.signalOutput = AddOutput("signal", PinDataType::kFloat, 0.0f, _C.signalOutput);
+
+        ADD_PARAM(m_freq);
+        ADD_PARAM(m_amp);
+        ADD_PARAM(m_phase);
+        ADD_PARAM(m_retrigger);
+        ADD_PARAM(m_useBPM);
+        ADD_PARAM(m_dottedNote);
+        ADD_PARAM(m_waveIndex);
 
         constexpr uint32_t wavetableNumSamples = kSampleRate / 2;
 
-        ArrayGet(m_waves, OscType::kSine) =
-            std::make_unique<WavetableOscillator>(wavetableNumSamples, GenWaveSine);
-        ArrayGet(m_waves, OscType::kSquare) =
-            std::make_unique<WavetableOscillator>(wavetableNumSamples, GenWaveSquare);
-        ArrayGet(m_waves, OscType::kTriangle) =
-            std::make_unique<WavetableOscillator>(wavetableNumSamples, GenWaveTri);
-        ArrayGet(m_waves, OscType::kSaw) =
-            std::make_unique<WavetableOscillator>(wavetableNumSamples, GenWaveSaw);
+        ArrayGet(m_waves, OscType::kSine) = std::make_unique<WavetableOscillator>(wavetableNumSamples, GenWaveSine);
+        ArrayGet(m_waves, OscType::kSquare) = std::make_unique<WavetableOscillator>(wavetableNumSamples, GenWaveSquare);
+        ArrayGet(m_waves, OscType::kTriangle) = std::make_unique<WavetableOscillator>(wavetableNumSamples, GenWaveTri);
+        ArrayGet(m_waves, OscType::kSaw) = std::make_unique<WavetableOscillator>(wavetableNumSamples, GenWaveSaw);
         m_phaseAccum.resize(NumVoices());
-
     }
 
     ~LFONode() {}
@@ -107,34 +94,32 @@ struct LFONode : public Node
         float freq = m_freq;
         float amp = m_amp;
 
-        if (inputs[0]->IsConnected()) {
-            freq = GetInputValue<float>(0);
+        if (inputs[_IO.freqInput]->IsConnected()) {
+            freq = GetInputValue<float>(_IO.freqInput);
         }
 
-        if (inputs[1]->IsConnected()) {
-            amp = m_amp * GetInputValue<float>(1);
+        if (inputs[_IO.ampInput]->IsConnected()) {
+            amp = m_amp * GetInputValue<float>(_IO.ampInput);
         }
 
         // Early return for quiet channels
-        if (amp < 0.01) {
-            SetOutputValue<float>(0, 0.0f);
+        if (amp < 0.01f) {
+            SetOutputValue<float>(_IO.signalOutput, 0.0f);
             return;
         }
 
         int voiceIdx = GetActiveVoice();
 
         if (m_retrigger) {
-            const auto& ch = GetInputValue<Channel>(2);
-            if (!ch.active) {
+            Channel const& channel = GetInputValue<Channel>(_IO.channelInput);
+            if (!channel.active) {
                 m_phaseAccum[voiceIdx] = 0.0f;
             }
         }
 
-        auto& osc = m_waves[m_waveIndex];
+        float wave = GetWaveValue(*m_waves[m_waveIndex], voiceIdx, freq, amp);
 
-        float wave = GetWaveValue(*osc, voiceIdx, freq, amp);
-
-        SetOutputValue<float>(0, wave);
+        SetOutputValue<float>(_IO.signalOutput, wave);
     }
 
     float GetWaveValue(WavetableOscillator& osc, uint32_t voiceIdx,
@@ -147,40 +132,28 @@ struct LFONode : public Node
 
     void Draw() override {
         GridUI& ui = *m_ctx.ui;
-        ui.BeginComponent(m_layout->GetComponent(m_indices.freqKnob));
-            DrawKnob(ui, "Freq", &m_freq, KnobParams<float>{
-                .minValue = 0.0f, .maxValue = 10.0f, .defaultValue = 1.0f, .format = "%.2f" 
-            });
-        ui.EndComponent();
+        DrawKnobEx(ui, GetComponent(_C.freqKnob), "Freq", &m_freq, KnobParams<float>{
+            .minValue = 0.0f, .maxValue = 10.0f, .defaultValue = 1.0f, .format = "%.2f" 
+        });
 
-        ui.BeginComponent(m_layout->GetComponent(m_indices.ampKnob));
-            DrawKnob(ui, "Amp", &m_amp, KnobParams<float>{
-                .minValue = 0.0f, .maxValue = 1.0f, .defaultValue = 0.5f, .format = "%.2f" 
-            });
-        ui.EndComponent();
+        DrawKnobEx(ui, GetComponent(_C.ampKnob), "Amp", &m_amp, KnobParams<float>{
+            .minValue = 0.0f, .maxValue = 1.0f, .defaultValue = 0.5f, .format = "%.2f" 
+        });
 
-        ui.BeginComponent(m_layout->GetComponent(m_indices.phaseKnob));
-            DrawKnob(ui, "Phase", &m_phase, KnobParams<float>{
-                .minValue = 0.0f, .maxValue = 3.14f, .defaultValue = 0.5f, .format = "%.2f" 
-            });
-        ui.EndComponent();
+        DrawKnobEx(ui, GetComponent(_C.phaseKnob), "Phase", &m_phase, KnobParams<float>{
+            .minValue = 0.0f, .maxValue = 3.14f, .defaultValue = 0.5f, .format = "%.2f" 
+        });
 
-        ui.BeginComponent(m_layout->GetComponent(m_indices.retriggerToggle));
-            DrawCheckbox(ui, "Retrigger", m_retrigger);
-        ui.EndComponent();
-
-        ui.BeginComponent(m_layout->GetComponent(m_indices.useBPMToggle));
-            DrawCheckbox(ui, "Use BPM", m_useBPM);
-        ui.EndComponent();
-
-        ui.BeginComponent(m_layout->GetComponent(m_indices.dottedNoteToggle));
-            DrawCheckbox(ui, "Dotted", m_dottedNote);
-        ui.EndComponent();
+        DrawCheckboxEx(ui, GetComponent(_C.retriggerToggle), "Retrigger", &m_retrigger);
+        DrawCheckboxEx(ui, GetComponent(_C.useBPMToggle), "Use BPM", &m_useBPM);
+        DrawCheckboxEx(ui, GetComponent(_C.dottedNoteToggle), "Dotted", &m_dottedNote);
     }
+
+    ComponentIndices _C{};
+    IOIndices _IO{};
 
     std::array<std::unique_ptr<WavetableOscillator>, NUM_WAVES> m_waves;
     std::vector<float> m_phaseAccum;
-    ComponentIndices m_indices;
     uint32_t m_waveIndex = 0u;
 
     float m_freq = 1.0f;

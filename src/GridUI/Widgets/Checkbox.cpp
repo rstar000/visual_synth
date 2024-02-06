@@ -11,7 +11,7 @@ namespace ImGui {
 constexpr float CHECKBOX_SIZE = 20.0f;
 constexpr float CHECKBOX_PADDING = 2.0f;
 
-bool DrawCheckboxImpl(ColorScheme const& colors, const char* label, const ImRect& dst, bool& value, bool labelBelow, float labelOffset) 
+bool DrawCheckboxImpl(ColorScheme const& colors, const char* label, const ImRect& dst, bool* value, bool labelBelow, float labelOffset) 
 {
     const ImVec2 outlineOrigin = {dst.Min.x + (dst.GetWidth() - CHECKBOX_SIZE) * 0.5f,
                                   dst.Min.y + (dst.GetHeight() - CHECKBOX_SIZE) * 0.5f};
@@ -29,11 +29,11 @@ bool DrawCheckboxImpl(ColorScheme const& colors, const char* label, const ImRect
     ImGui::PopID();
 
     if (pressed) {
-        value = !(value);
+        *value = !(*value);
     }
 
     ImVec2 offset = {CHECKBOX_PADDING, CHECKBOX_PADDING};
-    if (value) {
+    if (*value) {
         drawList->AddRect(outlineOrigin,
                         outlineOrigin + ImVec2(CHECKBOX_SIZE, CHECKBOX_SIZE),
                         enabledColor, 1.0f);

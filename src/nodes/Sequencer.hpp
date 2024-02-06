@@ -225,7 +225,7 @@ struct HoldNotesNode : public Node {
             ui.EndComponent();
 
             ui.BeginComponent(m_layout->GetComponent(m_indices.noteEnable[x]));
-                DrawCheckbox(*m_ctx.ui, "", m_enable[x]);
+                DrawCheckbox(*m_ctx.ui, "", &m_enable[x]);
             ui.EndComponent();
 
             m_note[x] = m_noteLookup.Get(m_semitone[x]).note;

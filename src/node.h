@@ -19,6 +19,10 @@
 #include "util.h"
 #include "writer.h"
 
+#define ADD_PARAM(name) \
+    AddParam(#name, &name);
+    
+
 // Constructor argument for all nodes
 struct NodeParams {
     SampleWriter* writer;
@@ -196,21 +200,25 @@ class Node {
     }
 
    protected:
-    void AddInput(const std::string& name, PinDataType dtype,
-                  PinData default_value, uint32_t componentIdx = 0,
+    uint32_t AddInput(const std::string& name, PinDataType dtype,
+                  PinData defaultValue, uint32_t componentIdx = 0,
                   bool mono = false) {
-        int _num_voices = mono ? 1 : NumVoices();
+        size_t const newInputIdx{inputs.size()};
+        int const numVoices = mono ? 1 : NumVoices();
         inputs.push_back(std::make_shared<Input>(
-            name, dtype, this, default_value, _num_voices, componentIdx));
+            name, dtype, this, defaultValue, numVoices, componentIdx));
+        return static_cast<uint32_t>(newInputIdx);
     }
 
-    void AddOutput(const std::string& name, PinDataType dtype,
-                   PinData default_value, uint32_t componentIdx = 0,
+    uint32_t AddOutput(const std::string& name, PinDataType dtype,
+                   PinData defaultValue, uint32_t componentIdx = 0,
                    bool mono = false) {
-        int _num_voices = mono ? 1 : NumVoices();
+        size_t const newOutputIdx{outputs.size()};
+        int const numVoices = mono ? 1 : NumVoices();
         outputs.push_back(std::make_shared<Output>(
-            name, dtype, this, default_value, m_ctx.playback->numSamples,
-            _num_voices, componentIdx));
+            name, dtype, this, defaultValue, m_ctx.playback->numSamples,
+            numVoices, componentIdx));
+        return static_cast<uint32_t>(newOutputIdx);
     }
 
     int GetActiveSample() const { return m_activeSample; }
@@ -242,6 +250,10 @@ class Node {
     template <typename T>
     T& GetOutputValue(int output_idx) {
         return outputs[output_idx]->GetValue<T>(m_activeVoice, m_activeSample);
+    }
+
+    GridComponent const& GetComponent(uint32_t componentIdx) {
+        return m_layout->GetComponent(componentIdx);
     }
 
     NodeParams m_ctx;

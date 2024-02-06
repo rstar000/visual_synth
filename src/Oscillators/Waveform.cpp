@@ -30,7 +30,16 @@ float GenWaveSquare(float phase)
 
 float GenWaveTri(float phase)
 {
-    return 0.0f;
+    float f = 8.0f / (M_PIf);
+    constexpr uint32_t NUM_WAVES = 50;
+
+    float sum = 0.0f;
+    for (uint32_t k = 1; k <= NUM_WAVES; k += 2) {
+        float one = (k - 1 / 2) % 2 ? 1.0f : -1.0f;
+        float frac = std::sin(M_PIf * k * phase) / (k * k);
+        sum += frac * one;
+    }
+    return sum * f;
 }
 
 float GenWaveSaw(float phase)

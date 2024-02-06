@@ -212,10 +212,10 @@ ColorScheme ColorScheme::GenerateDefault() {
 }
 
 ColorScheme ColorScheme::GenerateGruvbox() {
-    const ColorRGB BG_0 = ColorHexToRGB("282828");
-    const ColorRGB BG_1 = ColorHexToRGB("3C3836");
-    const ColorRGB BG_2 = ColorHexToRGB("504945");
-    const ColorRGB BG_3 = ColorHexToRGB("665C54");
+    const ColorRGB BG_0 = ColorHexToRGB("000000");
+    const ColorRGB BG_1 = ColorHexToRGB("111111");
+    const ColorRGB BG_2 = ColorHexToRGB("111111");
+    const ColorRGB BG_3 = ColorHexToRGB("333333");
 
     const ColorRGB FG_0 = ColorHexToRGB("FBF1C7");
     const ColorRGB FG_1 = ColorHexToRGB("EBDBB2");
@@ -241,7 +241,7 @@ ColorScheme ColorScheme::GenerateGruvbox() {
     ColorScheme colors;
     auto palette = GenPaletteRainbow();
     colors.pinColors.fill = ColorScheme::ColorStates {
-        .normal = RgbToRgba(FG_3),
+        .normal = RgbToRgba(BG_3),
         .hovered =  RgbToRgba(ORANGE_1),
         .selected = RgbToRgba(RED_1)
     };

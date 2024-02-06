@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <initializer_list>
 #include <queue>
 #include <span>
@@ -182,6 +183,15 @@ public:
                 GetIndexOp{.ptr = idxPtr,
                     .child = true,
                     .childIdx = static_cast<uint32_t>(childIdx)});
+        }
+        return *this;
+    }
+
+    GridLayoutBuilder& GetIndexN(std::initializer_list<uint32_t*> idxPtrs) {
+        uint32_t childIdx{0U};
+        for (auto ptr : idxPtrs) {
+            m_ops.push_back(GetIndexOp{.ptr = ptr, .child = true, .childIdx = childIdx});
+            ++childIdx;
         }
         return *this;
     }

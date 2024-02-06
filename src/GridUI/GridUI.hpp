@@ -65,7 +65,7 @@ class GridUI
     std::string m_nodeTitle;
     ImRect m_titleBarRect;
     ImRect m_contentRect;
-    ImRect m_componentRect;
+    std::optional<ImRect> m_componentRect;
     ImVec2* m_nodeGridPos;
     ImVec2 m_nodeGridSize;
     uint32_t m_nodeId;
@@ -292,10 +292,14 @@ class GridUI
 
     void EndComponent() {
         ImGui::PopID();
+        m_componentRect = std::nullopt;
     }
 
     ImRect const& GetNodeRect() const { return m_currentRect; }
-    ImRect const& GetComponentRect() const { return m_componentRect; }
+    ImRect const& GetComponentRect() const { 
+        ASSERT(m_componentRect.has_value()); 
+        return *m_componentRect; 
+    }
     ColorScheme const& GetColorScheme() const { return m_colors; }
 
     void EndNode() {
