@@ -89,6 +89,95 @@ void Multigraph::SortNodes() {
     // std::cout << " ]" << std::endl;
 }
 
+bool Multigraph::AddLink(pin_id_t srcPinId, pin_id_t dstPinId, link_id_t* newLinkId,
+                bool commit) {
+    REQ_CHECK_EX(!m_links.LinkExists(srcPinId, dstPinId), "Link exists");
+
+    auto pin_src = m_pins.GetPinById(srcPinId);
+    auto pin_dst = m_pins.GetPinById(dstPinId);
+
+    REQ_CHECK_EX(pin_src->type == PinType::kOutput &&
+                        pin_dst->type == PinType::kInput,
+                    "AddLink: Pin type");
+
+    auto node_src = GetNodeById(pin_src->node_id);
+    auto node_dst = GetNodeById(pin_dst->node_id);
+
+    auto src_out = node_src->GetOutputByIndex(pin_src->node_io_id);
+    auto dst_in = node_dst->GetInputByIndex(pin_dst->node_io_id);
+
+    REQ_CHECK_EX(src_out->type == dst_in->type, "AddLink: Type mismatch");
+
+    // Additional requirement: input can only have one link
+    if (dst_in->IsConnected()) {
+        SPDLOG_ERROR("Node {} already has input {} connected", MapGetRef(m_nodes, pin_dst->node_id).attrs.display_name, pin_dst->node_io_id);
+    }
+    REQ_CHECK_EX(!dst_in->IsConnected(), "Already connected");
+    REQ_CHECK_EX(m_links.AddLink(srcPinId, dstPinId, newLinkId, commit),
+                    "Failed to add link");
+
+    if (!commit) {
+        return true;
+    }
+
+    dst_in->Connect(src_out);
+    SortNodes();
+    return true;
+}
+
+bool Multigraph::AddLink(node_id_t srcNodeId, int srcOutIdx, node_id_t dstNodeId,
+                int dstInIdx, link_id_t* newLinkId, bool commit) {
+    REQ_CHECK(srcNodeId != dstNodeId);
+    auto& pins_src = MapGetRef(m_pins.node_to_pins, srcNodeId);
+    auto& pins_dst = MapGetRef(m_pins.node_to_pins, dstNodeId);
+    ASSERT(srcOutIdx < pins_src.outputs.size());
+    ASSERT(dstInIdx < pins_dst.inputs.size());
+
+    return AddLink(pins_src.outputs[srcOutIdx], pins_dst.inputs[dstInIdx],
+                    newLinkId, commit);
+}
+
+void Multigraph::RemoveNode(node_id_t node_id) {
+    ASSERT(m_nodes.contains(node_id));
+    std::set<int> node_links = m_links.node_links[node_id];
+    for (auto link_id : node_links) {
+        RemoveLink(link_id);
+    }
+
+    m_links.node_links.erase(node_id);
+    m_pins.RemoveNodePins(node_id);
+    m_nodes.erase(node_id);
+    SortNodes();
+}
+
+void Multigraph::RemoveLink(int link_id) {
+    auto& link_pins = MapGetRef(m_links.link_id_to_pins, link_id);
+    auto dst_pin = m_pins.GetPinById(link_pins.second);
+
+    auto dst_node = GetNodeById(dst_pin->node_id);
+    auto dst_input = dst_node->GetInputByIndex(dst_pin->node_io_id);
+
+    dst_input->Disconnect();
+    m_links.RemoveLink(link_id);
+    SortNodes();
+}
+
+void Multigraph::RemoveLink(pin_id_t srcPinId, pin_id_t dstPinId) {
+    ASSERT(LinkExists(srcPinId, dstPinId));
+    link_id_t linkId = m_links.GetLinkId(srcPinId, dstPinId);
+    RemoveLink(linkId);
+}
+
+int Multigraph::AddNode(NodeWrapper wrapper) {
+    int new_id = id_counter++;
+    ASSERT(!m_nodes.contains(new_id));
+    m_pins.CreatePins(wrapper.node, new_id);
+    m_nodes[new_id] = std::move(wrapper);
+    SortNodes();
+    return new_id;
+}
+
+
 // GraphIO //
 GraphIO::GraphIO(Multigraph* graph, const NodeFactory* factory, const std::string& patchDir)
     : m_graph(graph), m_factory(factory), m_patchDir(patchDir) {}
@@ -174,18 +263,18 @@ void GraphIO::LoadFile(const std::string& filename) const {
     std::ifstream f(filename);
     auto json = nlohmann::json::object();
     f >> json;
-    
+
     Deserialize(json);
 }
 
 void GraphIO::Reset() const {
     auto graphLocked = m_graph->GetAccess();
     std::vector<node_id_t> nodeIds;
-    
+
     for (auto& [nodeId, nodeWrapper] : m_graph->GetNodes()) {
         nodeIds.push_back(nodeId);
     }
-    
+
     for (auto id : nodeIds) {
         m_graph->RemoveNode(id);
     }

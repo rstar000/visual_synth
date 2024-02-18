@@ -27,9 +27,7 @@ struct BiquadFilterNode : public Node {
     };
 
     BiquadFilterNode(const NodeParams& ctx) : Node(ctx) {
-        type = TYPE;
-        display_name = DISPLAY_NAME;
-
+        Setup(TYPE, DISPLAY_NAME);
         m_shape = ImVec2(4, 2);
 
         auto builder = GridLayoutBuilder();

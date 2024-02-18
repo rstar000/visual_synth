@@ -26,9 +26,7 @@ struct SineOscillatorNode : public Node {
     };
 
     SineOscillatorNode(const NodeParams& ctx) : Node(ctx) {
-        type = TYPE;
-        display_name = DISPLAY_NAME;
-
+        Setup(TYPE, DISPLAY_NAME);
         m_shape = ImVec2(3, 1);
         m_layout = std::make_unique<GridLayout>(
             GridLayoutBuilder()
@@ -97,9 +95,7 @@ struct SquareOscillatorNode : public Node {
     static inline const NodeType TYPE = NodeType::SQUARE_OSC;
 
     SquareOscillatorNode(const NodeParams& ctx) : Node(ctx) {
-        type = TYPE;
-        display_name = DISPLAY_NAME;
-
+        Setup(TYPE, DISPLAY_NAME);
         AddInput("freq", PinDataType::kFloat, 440.0f);
         AddInput("amp", PinDataType::kFloat, 0.5f);
         AddInput("phase", PinDataType::kFloat, 0.0f);
@@ -159,9 +155,7 @@ struct SuperOscNode : public Node {
     };
 
     SuperOscNode(const NodeParams& ctx) : Node(ctx) {
-        type = TYPE;
-        display_name = DISPLAY_NAME;
-
+        Setup(TYPE, DISPLAY_NAME);
         m_shape = ImVec2(4, 4);
         m_layout = std::make_unique<GridLayout>(
             GridLayoutBuilder()

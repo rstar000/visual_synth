@@ -7,37 +7,26 @@
 #include "node_types.h"
 #include "output.h"
 
-enum class NodeCategory {
-    OCSILLATOR,
-    SEQUENCER,
-    IO,
-    UTILITY,
-    ARITHMETIC,
-    DEBUG,
-    FILTER,
-    FX
-};
-
 struct BaseFactoryFunc {
-    virtual void Construct(const NodeParams& ctx, NodePtr* out) const = 0;
+    virtual void Construct(NodeParams const& ctx, NodePtr* out) const = 0;
     virtual ~BaseFactoryFunc() = default;
 };
 
 template <typename T>
 struct ConcreteFactoryFunc : BaseFactoryFunc {
-    void Construct(const NodeParams& ctx, NodePtr* out) const override {
+    void Construct(NodeParams const& ctx, NodePtr* out) const override {
         *out = std::make_unique<T>(ctx);
     }
     ~ConcreteFactoryFunc() = default;
 };
 
 struct NodeFactory {
-    NodeFactory(const NodeParams& ctx) : ctx(ctx) {
+    NodeFactory(NodeParams const& ctx) : ctx(ctx) {
         RegisterCategories();
         RegisterNodes();
     };
 
-    NodePtr CreateNode(const NodeType& type) const {
+    NodePtr CreateNode(NodeType const& type) const {
         SPDLOG_INFO("[NodeFactory] CreateNode: {}", display_names.at(type));
         auto& func = MapGetConstRef(factory, type);
         NodePtr ret;
@@ -45,17 +34,14 @@ struct NodeFactory {
         return ret;
     }
 
-    NodePtr CreateNodeByName(const std::string& name) const {
+    NodePtr CreateNodeByName(std::string const& name) const {
         return CreateNode(names.GetType(name));
     }
 
     const auto& GetDisplayNames() const { return display_names; }
-
     const auto& GetNodesByCategory() const { return nodes_by_category; }
-
     const auto& GetCategoryNames() const { return category_names; }
-
-    void DumpNodes(const std::string& filename) const;
+    void DumpNodes(std::string const& filename) const;
 
    private:
     void RegisterCategories();

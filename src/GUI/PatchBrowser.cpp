@@ -32,7 +32,7 @@ bool ListFiles(const std::string& path, std::vector<FileEntry>& result)
 }  // namespace
 
 PatchBrowser::PatchBrowser(const GraphIO* io)
-    : m_patchDir{io->PatchDir()}
+    : m_patchDir{io->GetPatchDir()}
     , m_io{io}
 {
     ListFiles(m_patchDir, m_files);

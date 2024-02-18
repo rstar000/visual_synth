@@ -26,9 +26,7 @@ struct ADSRNode : public Node {
     };
 
     ADSRNode(const NodeParams& ctx) : Node(ctx) {
-        type = TYPE;
-        display_name = DISPLAY_NAME;
-
+        Setup(TYPE, DISPLAY_NAME);
         m_shape = ImVec2(5, 1);
         m_layout = std::make_unique<GridLayout>(
             GridLayoutBuilder()

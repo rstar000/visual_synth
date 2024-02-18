@@ -150,17 +150,12 @@ class Node {
         return outputs[index];
     }
 
-    size_t NumInputs() const { return inputs.size(); }
-
+    size_t NumInputs()  const { return inputs.size(); }
     size_t NumOutputs() const { return outputs.size(); }
-
-    int NumVoices() const { return m_ctx.playback->numVoices; }
-
-    ImVec2 GetShape() const { return m_shape; }
-
-    const std::string& GetDisplayName() const { return display_name; }
-
-    NodeType GetType() const { return type; }
+    int NumVoices()     const { return m_ctx.playback->numVoices; }
+    ImVec2 GetShape()   const { return m_shape; }
+    NodeType GetType()  const { return m_type; }
+    std::string const& GetDisplayName() const { return m_displayName; }
 
     void Process(int voice_idx, int sample_idx, float time) {
         m_activeVoice = voice_idx;
@@ -172,6 +167,11 @@ class Node {
     virtual void Process(float time) = 0;
     virtual void Draw() {}
     virtual void DrawContextMenu() {}
+
+    void Setup(NodeType type, std::string const& displayName) {
+        m_type = type;
+        m_displayName = displayName;
+    }
 
     template <typename T>
     void AddParam(std::string keyName, T* valuePtr) {
@@ -261,9 +261,8 @@ class Node {
     int m_activeSample = 0;
     int m_activeVoice = 0;
 
-    std::string display_name;
-    NodeType type;
-    std::size_t last_update = -1;
+    std::string m_displayName;
+    NodeType m_type;
 
     std::vector<InputPtr> inputs;
     std::vector<OutputPtr> outputs;

@@ -45,7 +45,7 @@ struct FileMenu {
         SPDLOG_INFO("[FileMenu] Import: {}", selection[0]);
         m_io->LoadFile(selection[0]);
     }
-    
+
     void Reset() {
         SPDLOG_INFO("[FileMenu] Reset");
         m_io->Reset();

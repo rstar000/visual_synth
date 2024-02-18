@@ -299,3 +299,10 @@ inline T SafeAdd(T a, T b) {
 
     return target;
 }
+
+template<typename Type>
+struct is_std_array : std::false_type { };
+
+template<typename Item, std::size_t N>
+struct is_std_array< std::array<Item, N> > : std::true_type { };
+

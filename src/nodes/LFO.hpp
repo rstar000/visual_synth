@@ -37,8 +37,7 @@ struct LFONode : public Node
     };
 
     LFONode(const NodeParams& ctx) : Node(ctx) {
-        type = TYPE;
-        display_name = DISPLAY_NAME;
+        Setup(TYPE, DISPLAY_NAME);
 
         m_shape = ImVec2(5, 5);
         m_layout = std::make_unique<GridLayout>(

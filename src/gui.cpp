@@ -246,8 +246,6 @@ void Gui::DrawMidiSettings()
     if (ImGui::Button("OK")) {
         m_showMidiSettings = false;
     }
-    
-    
 }
 
 void Gui::DrawGraph()

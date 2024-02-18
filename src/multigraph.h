@@ -51,7 +51,7 @@ struct NodeAttributes {
         JsonSetValue(j, "display_name", display_name);
     }
 
-    void Load(const nlohmann::json& j) {
+    void Load(nlohmann::json const& j) {
         JsonGetValue(j, "x", pos.x);
         JsonGetValue(j, "y", pos.y);
         JsonGetValue(j, "display_name", display_name);
@@ -102,12 +102,12 @@ struct Pins {
         MapErase(node_to_pins, node_id);
     }
 
-    const PinInfo* GetPinById(pin_id_t pin_id) const {
+    PinInfo const* GetPinById(pin_id_t pin_id) const {
         return &MapGetConstRef(pin_info, pin_id);
     }
 
     node_id_t GetNodeFromPin(pin_id_t pin_id) const {
-        auto& info = MapGetConstRef(pin_info, pin_id);
+        auto const& info = MapGetConstRef(pin_info, pin_id);
         return info.node_id;
     }
 
@@ -189,116 +189,38 @@ class Multigraph {
    public:
     Multigraph() : m_links(&m_pins) {}
 
-    int AddNode(NodeWrapper wrapper) {
-        int new_id = id_counter++;
-        ASSERT(!m_nodes.contains(new_id));
-        m_pins.CreatePins(wrapper.node, new_id);
-        m_nodes[new_id] = std::move(wrapper);
-        SortNodes();
-        return new_id;
-    }
+    int AddNode(NodeWrapper wrapper);
 
     bool CanAddLink(pin_id_t srcPinId, pin_id_t dstPinId) {
         return AddLink(srcPinId, dstPinId, nullptr, false);
     }
 
     bool AddLink(pin_id_t srcPinId, pin_id_t dstPinId, link_id_t* newLinkId,
-                 bool commit = true) {
-        REQ_CHECK_EX(!m_links.LinkExists(srcPinId, dstPinId), "Link exists");
+                 bool commit = true);
 
-        auto pin_src = m_pins.GetPinById(srcPinId);
-        auto pin_dst = m_pins.GetPinById(dstPinId);
-
-        REQ_CHECK_EX(pin_src->type == PinType::kOutput &&
-                         pin_dst->type == PinType::kInput,
-                     "AddLink: Pin type");
-
-        auto node_src = GetNodeById(pin_src->node_id);
-        auto node_dst = GetNodeById(pin_dst->node_id);
-
-        auto src_out = node_src->GetOutputByIndex(pin_src->node_io_id);
-        auto dst_in = node_dst->GetInputByIndex(pin_dst->node_io_id);
-
-        REQ_CHECK_EX(src_out->type == dst_in->type, "AddLink: Type mismatch");
-
-        // Additional requirement: input can only have one link
-        if (dst_in->IsConnected()) {
-            SPDLOG_ERROR("Node {} already has input {} connected", MapGetRef(m_nodes, pin_dst->node_id).attrs.display_name, pin_dst->node_io_id);
-        }
-        REQ_CHECK_EX(!dst_in->IsConnected(), "Already connected");
-        REQ_CHECK_EX(m_links.AddLink(srcPinId, dstPinId, newLinkId, commit),
-                     "Failed to add link");
-
-        if (!commit) {
-            return true;
-        }
-
-        dst_in->Connect(src_out);
-        SortNodes();
-        return true;
-    }
 
     bool LinkExists(pin_id_t srcPinId, pin_id_t dstPinId) {
         return m_links.LinkExists(srcPinId, dstPinId);
     }
 
     bool AddLink(node_id_t srcNodeId, int srcOutIdx, node_id_t dstNodeId,
-                 int dstInIdx, link_id_t* newLinkId, bool commit) {
-        REQ_CHECK(srcNodeId != dstNodeId);
-        auto& pins_src = MapGetRef(m_pins.node_to_pins, srcNodeId);
-        auto& pins_dst = MapGetRef(m_pins.node_to_pins, dstNodeId);
-        ASSERT(srcOutIdx < pins_src.outputs.size());
-        ASSERT(dstInIdx < pins_dst.inputs.size());
+                 int dstInIdx, link_id_t* newLinkId, bool commit);
 
-        return AddLink(pins_src.outputs[srcOutIdx], pins_dst.inputs[dstInIdx],
-                       newLinkId, commit);
-    }
-
-    void RemoveNode(node_id_t node_id) {
-        ASSERT(m_nodes.contains(node_id));
-        std::set<int> node_links = m_links.node_links[node_id];
-        for (auto link_id : node_links) {
-            RemoveLink(link_id);
-        }
-
-        m_links.node_links.erase(node_id);
-        m_pins.RemoveNodePins(node_id);
-        m_nodes.erase(node_id);
-        SortNodes();
-    }
-
-    void RemoveLink(int link_id) {
-        auto& link_pins = MapGetRef(m_links.link_id_to_pins, link_id);
-        auto dst_pin = m_pins.GetPinById(link_pins.second);
-
-        auto dst_node = GetNodeById(dst_pin->node_id);
-        auto dst_input = dst_node->GetInputByIndex(dst_pin->node_io_id);
-
-        dst_input->Disconnect();
-        m_links.RemoveLink(link_id);
-        SortNodes();
-    }
-
-    void RemoveLink(pin_id_t srcPinId, pin_id_t dstPinId) {
-        ASSERT(LinkExists(srcPinId, dstPinId));
-        link_id_t linkId = m_links.GetLinkId(srcPinId, dstPinId);
-        RemoveLink(linkId);
-    }
+    void RemoveNode(node_id_t node_id);
+    void RemoveLink(int link_id);
+    void RemoveLink(pin_id_t srcPinId, pin_id_t dstPinId);
 
     Node* GetNodeById(int node_id) {
         return MapGetRef(m_nodes, node_id).node.get();
     }
 
     Nodes& GetNodes() { return m_nodes; }
-
     const Pins& GetPins() const { return m_pins; }
-
     const Links& GetLinks() const { return m_links; }
-
     auto& GetSortedNodes() { return m_nodesOrdered; }
 
     // Used for concurrent ops between GUI and audio thread
-    Access<Multigraph> GetAccess() { return {this, std::lock_guard(_mtx)}; }
+    Access<Multigraph> GetAccess() { return Access<Multigraph>{this, std::lock_guard(_mtx)}; }
 
    private:
     void SortNodes();
@@ -320,13 +242,9 @@ struct GraphIO {
     void Serialize(nlohmann::json& j_out) const;
     void Deserialize(const nlohmann::json& j_in) const;
     void Reset() const;
-    
     void LoadFile(const std::string& filename) const;
     void SaveFile(const std::string& filename) const;
-
-    std::string PatchDir() const {
-        return m_patchDir;
-    }
+    std::string GetPatchDir() const { return m_patchDir; }
 
    private:
     Multigraph* m_graph;

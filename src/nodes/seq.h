@@ -17,9 +17,7 @@ struct ClockNode : public Node {
     static inline const NodeType TYPE = NodeType::CLOCK;
 
     ClockNode(const NodeParams& ctx) : Node(ctx), oct(1) {
-        type = TYPE;
-        display_name = DISPLAY_NAME;
-
+        Setup(TYPE, DISPLAY_NAME);
         AddOutput("ch", PinDataType::kChannel, Channel{});
 
         bpm_slider_label = GenLabel("slider", this);
@@ -98,9 +96,7 @@ struct ChannelUnpackNode : public Node {
     };
 
     ChannelUnpackNode(const NodeParams& ctx) : Node(ctx) {
-        type = TYPE;
-        display_name = DISPLAY_NAME;
-
+        Setup(TYPE, DISPLAY_NAME);
         m_shape = ImVec2(2, 2);
         m_layout = std::make_unique<GridLayout>(
             GridLayoutBuilder()
@@ -171,9 +167,7 @@ struct PianoNode : public Node {
     static inline const NodeType TYPE = NodeType::PIANO;
 
     PianoNode(const NodeParams& ctx) : Node(ctx) {
-        type = TYPE;
-        display_name = DISPLAY_NAME;
-
+        Setup(TYPE, DISPLAY_NAME);
         m_shape = ImVec2(10, 2);
         m_layout =
             std::make_unique<GridLayout>(GridLayoutBuilder()
@@ -273,9 +267,7 @@ struct MidiNode : public Node {
 
     MidiNode(const NodeParams& ctx)
         : Node(ctx), tracker(ctx.tracker), state(NumVoices()) {
-        type = TYPE;
-        display_name = DISPLAY_NAME;
-
+        Setup(TYPE, DISPLAY_NAME);
         m_shape = ImVec2(1, 1);
         m_layout = std::make_unique<GridLayout>(
             GridLayoutBuilder()
@@ -351,9 +343,7 @@ struct MidiControlNode : public Node {
     };
 
     MidiControlNode(const NodeParams& ctx) : Node(ctx), m_tracker(ctx.tracker) {
-        type = TYPE;
-        display_name = DISPLAY_NAME;
-
+        Setup(TYPE, DISPLAY_NAME);
         m_shape = ImVec2(3, 1);
         m_layout = std::make_unique<GridLayout>(
             GridLayoutBuilder()

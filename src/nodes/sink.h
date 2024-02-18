@@ -16,9 +16,7 @@ struct AudioOutputNode : public Node {
     };
 
     AudioOutputNode(const NodeParams& ctx) : Node(ctx), writer(ctx.writer) {
-        type = TYPE;
-        display_name = DISPLAY_NAME;
-
+        Setup(TYPE, DISPLAY_NAME);
         m_shape = ImVec2(1, 2);
         m_layout = std::make_unique<GridLayout>(
             GridLayoutBuilder()

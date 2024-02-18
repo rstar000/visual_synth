@@ -13,11 +13,7 @@ protected:
     std::string m_keyName;
 };
 
-template<typename Type>
-struct is_std_array : std::false_type { };
-
-template<typename Item, std::size_t N>
-struct is_std_array< std::array<Item, N> > : std::true_type { };
+using ParamPtr = std::shared_ptr<BaseParam>;
 
 template <typename T>
 struct Param : public BaseParam

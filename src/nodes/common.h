@@ -24,9 +24,7 @@ struct SliderNode : public Node {
     };
 
     SliderNode(const NodeParams& ctx) : Node(ctx) {
-        type = TYPE;
-        display_name = DISPLAY_NAME;
-
+        Setup(TYPE, DISPLAY_NAME);
         m_shape = ImVec2(2, 2);
 
         m_layout =
@@ -96,9 +94,7 @@ struct ConstantNode : public Node {
     static inline const NodeType TYPE = NodeType::CONSTANT;
 
     ConstantNode(const NodeParams& ctx) : Node(ctx) {
-        type = TYPE;
-        display_name = DISPLAY_NAME;
-
+        Setup(TYPE, DISPLAY_NAME);
         m_shape = ImVec2(1, 1);
         m_layout =
             std::make_unique<GridLayout>(
@@ -138,9 +134,7 @@ struct MixNode : public Node {
     };
 
     MixNode(const NodeParams& ctx) : Node(ctx) {
-        type = TYPE;
-        display_name = DISPLAY_NAME;
-
+        Setup(TYPE, DISPLAY_NAME);
         m_shape = ImVec2(2, 1);
         m_layout = std::make_unique<GridLayout>(
             GridLayoutBuilder()
@@ -194,9 +188,7 @@ struct AddNode : public Node {
     static inline const NodeType TYPE = NodeType::ADD;
 
     AddNode(const NodeParams& ctx) : Node(ctx) {
-        type = TYPE;
-        display_name = DISPLAY_NAME;
-
+        Setup(TYPE, DISPLAY_NAME);
         m_shape = ImVec2(1, 1);
         m_layout = std::make_unique<GridLayout>(
             GridLayoutBuilder()
@@ -224,9 +216,7 @@ struct MultiplyNode : public Node {
     static inline const NodeType TYPE = NodeType::MULTIPLY;
 
     MultiplyNode(const NodeParams& ctx) : Node(ctx) {
-        type = TYPE;
-        display_name = DISPLAY_NAME;
-
+        Setup(TYPE, DISPLAY_NAME);
         m_shape = ImVec2(1, 1);
         m_layout = std::make_unique<GridLayout>(
             GridLayoutBuilder()
@@ -252,9 +242,7 @@ struct ClampNode : public Node {
     static inline const NodeType TYPE = NodeType::CLAMP;
 
     ClampNode(const NodeParams& ctx) : Node(ctx) {
-        type = TYPE;
-        display_name = DISPLAY_NAME;
-
+        Setup(TYPE, DISPLAY_NAME);
         m_shape = ImVec2(1, 1);
         m_layout = std::make_unique<GridLayout>(
             GridLayoutBuilder()
@@ -285,9 +273,7 @@ struct NegateNode : public Node {
     static inline const NodeType TYPE = NodeType::NEGATE;
 
     NegateNode(const NodeParams& ctx) : Node(ctx) {
-        type = TYPE;
-        display_name = DISPLAY_NAME;
-
+        Setup(TYPE, DISPLAY_NAME);
         m_shape = ImVec2(1, 1);
         m_layout = std::make_unique<GridLayout>(
             GridLayoutBuilder()
@@ -320,9 +306,7 @@ struct RangeShiftNode : public Node {
     };
 
     RangeShiftNode(const NodeParams& ctx) : Node(ctx) {
-        type = TYPE;
-        display_name = DISPLAY_NAME;
-
+        Setup(TYPE, DISPLAY_NAME);
         m_shape = ImVec2(3, 1);
         m_layout = std::make_unique<GridLayout>(
             GridLayoutBuilder()
@@ -398,9 +382,7 @@ struct DebugNode : public Node {
     };
 
     DebugNode(const NodeParams& ctx) : Node(ctx) {
-        type = TYPE;
-        display_name = DISPLAY_NAME;
-
+        Setup(TYPE, DISPLAY_NAME);
         m_shape = ImVec2(5, 4);
         m_layout = std::make_unique<GridLayout>(
             GridLayoutBuilder()

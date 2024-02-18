@@ -32,8 +32,7 @@ struct MonoSequencer : public Node {
     };
 
     MonoSequencer(const NodeParams& ctx) : Node(ctx) {
-        type = TYPE;
-        display_name = DISPLAY_NAME;
+        Setup(TYPE, DISPLAY_NAME);
 
         m_shape = ImVec2(9, 2);
 
@@ -147,9 +146,7 @@ struct HoldNotesNode : public Node {
     };
 
     HoldNotesNode(const NodeParams& ctx) : Node(ctx) {
-        type = TYPE;
-        display_name = DISPLAY_NAME;
-
+        Setup(TYPE, DISPLAY_NAME);
         m_shape = ImVec2(9, 2);
 
         auto builder = GridLayoutBuilder();
@@ -256,8 +253,7 @@ struct Arpeggiator : public Node {
     };
 
     Arpeggiator(const NodeParams& ctx) : Node(ctx) {
-        type = TYPE;
-        display_name = DISPLAY_NAME;
+        Setup(TYPE, DISPLAY_NAME);
 
         m_shape = ImVec2(9, 2);
 
@@ -443,9 +439,7 @@ struct PolySequencerNode : public Node {
         : Node(ctx)
         , m_seq(MAX_NUM_CHANNELS)
     {
-        type = TYPE;
-        display_name = DISPLAY_NAME;
-
+        Setup(TYPE, DISPLAY_NAME);
         m_shape = ImVec2(9, 4);
 
         auto builder = GridLayoutBuilder();
